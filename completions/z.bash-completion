@@ -3,7 +3,7 @@ _z_complete() {
   COMPREPLY=()
 
   if [[ "$COMP_CWORD" -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "attach" -- "$cur"))
+    COMPREPLY=($(compgen -W "attach status" -- "$cur"))
     return
   fi
 

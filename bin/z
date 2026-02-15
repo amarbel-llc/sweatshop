@@ -212,10 +212,139 @@ z_attach_to_path() {
   z_post_zmx "$z_path"
 }
 
+z_status_branch() {
+  local branch_path="$1"
+  local branch_name="$2"
+  local indent="${3:-  }"
+
+  local dirty=""
+  local porcelain
+  porcelain="$(git -C "$branch_path" status --porcelain 2>/dev/null)" || porcelain=""
+
+  if [[ -n "$porcelain" ]]; then
+    local modified added deleted untracked
+    modified="$(grep -c '^.M' <<<"$porcelain" || true)"
+    added="$(grep -c '^A' <<<"$porcelain" || true)"
+    deleted="$(grep -c '^.D' <<<"$porcelain" || true)"
+    untracked="$(grep -c '^??' <<<"$porcelain" || true)"
+
+    local parts=()
+    [[ "$modified" -gt 0 ]] && parts+=("${modified}M")
+    [[ "$added" -gt 0 ]] && parts+=("${added}A")
+    [[ "$deleted" -gt 0 ]] && parts+=("${deleted}D")
+    [[ "$untracked" -gt 0 ]] && parts+=("${untracked}?")
+    dirty="$(
+      IFS=' '
+      echo "${parts[*]}"
+    )"
+  else
+    dirty="clean"
+  fi
+
+  local remote_status=""
+  local upstream
+  upstream="$(git -C "$branch_path" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)" || upstream=""
+
+  if [[ -n "$upstream" ]]; then
+    local left_right
+    left_right="$(git -C "$branch_path" rev-list --left-right --count '@{upstream}...HEAD' 2>/dev/null)" || left_right=""
+
+    if [[ -n "$left_right" ]]; then
+      local behind ahead
+      behind="$(echo "$left_right" | cut -f1)"
+      ahead="$(echo "$left_right" | cut -f2)"
+
+      local parts=()
+      [[ "$ahead" -gt 0 ]] && parts+=("↑${ahead}")
+      [[ "$behind" -gt 0 ]] && parts+=("↓${behind}")
+
+      if [[ ${#parts[@]} -gt 0 ]]; then
+        remote_status="$(
+          IFS=' '
+          echo "${parts[*]}"
+        ) ${upstream}"
+      else
+        remote_status="≡ ${upstream}"
+      fi
+    fi
+  fi
+
+  local last_commit
+  last_commit="$(git -C "$branch_path" log -1 --format='%cs' 2>/dev/null)" || last_commit="n/a"
+
+  local last_modified
+  local newest_file
+  newest_file="$(find "$branch_path" -not -path '*/.git/*' -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1)" || newest_file=""
+
+  if [[ -n "$newest_file" ]]; then
+    last_modified="$(date -d "@${newest_file%%.*}" '+%Y-%m-%d' 2>/dev/null)" || last_modified="n/a"
+  else
+    last_modified="n/a"
+  fi
+
+  printf "%s%-20s %-12s %-25s commit: %s  modified: %s\n" \
+    "$indent" "$branch_name" "$dirty" "$remote_status" "$last_commit" "$last_modified"
+}
+
+z_status_repo() {
+  local eng_area="$1"
+  local repo="$2"
+  local repo_path="$HOME/$eng_area/repos/$repo"
+
+  if [[ ! -d "$repo_path/.git" ]]; then
+    return 0
+  fi
+
+  gum log -t info "$eng_area/repos/$repo"
+
+  local main_branch
+  main_branch="$(git -C "$repo_path" branch --show-current 2>/dev/null)" || main_branch=""
+
+  if [[ -n "$main_branch" ]]; then
+    z_status_branch "$repo_path" "$main_branch"
+  fi
+
+  local worktrees_dir="$HOME/$eng_area/worktrees/$repo"
+  if [[ -d "$worktrees_dir" ]]; then
+    local worktree
+    for worktree in "$worktrees_dir"/*/; do
+      [[ -d "$worktree" ]] || continue
+      local wt_name
+      wt_name="$(basename "$worktree")"
+      z_status_branch "$worktree" "$wt_name" "    "
+    done
+  fi
+}
+
+z_status() {
+  local found=false
+
+  local eng_dir
+  for eng_dir in "$HOME"/eng*/repos/; do
+    [[ -d "$eng_dir" ]] || continue
+    local eng_area
+    eng_area="$(basename "$(dirname "$eng_dir")")"
+
+    local repo_dir
+    for repo_dir in "$eng_dir"*/; do
+      [[ -d "$repo_dir" ]] || continue
+      local repo
+      repo="$(basename "$repo_dir")"
+      z_status_repo "$eng_area" "$repo"
+      found=true
+    done
+  done
+
+  if [[ "$found" == false ]]; then
+    gum log -t info "no repos found"
+  fi
+}
+
 z_usage() {
   gum log -t error "usage: z <subcommand> [args]"
   gum log -t info "subcommands:"
   gum log -t info "  attach [target]  attach to a worktree session"
+  gum log -t info "  status           show status of all repos and worktrees"
   return 1
 }
 
@@ -264,6 +393,10 @@ z_main() {
     attach)
       shift
       z_attach "$@"
+      ;;
+    status)
+      shift
+      z_status "$@"
       ;;
     *)
       z_usage
