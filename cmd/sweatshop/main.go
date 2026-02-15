@@ -24,10 +24,10 @@ var rootCmd = &cobra.Command{
 }
 
 var attachCmd = &cobra.Command{
-	Use:   "attach [target] [prompt]",
+	Use:   "attach [target] [claude args...]",
 	Short: "Attach to a worktree session",
-	Long:  `Attach to an existing or new worktree session. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If a prompt is provided, claude is launched with that prompt instead of a shell.`,
-	Args:  cobra.MaximumNArgs(2),
+	Long:  `Attach to an existing or new worktree session. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
+	Args:  cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -39,9 +39,9 @@ var attachCmd = &cobra.Command{
 			format = "tap"
 		}
 
-		var prompt string
+		var claudeArgs []string
 		if len(args) >= 2 {
-			prompt = args[1]
+			claudeArgs = args[1:]
 		}
 
 		if len(args) == 0 {
@@ -52,9 +52,9 @@ var attachCmd = &cobra.Command{
 			sweatshopPath := cwd[len(home)+1:]
 
 			if info, err := os.Stat(cwd); err == nil && info.IsDir() {
-				return attach.Existing(sweatshopPath, format, prompt)
+				return attach.Existing(sweatshopPath, format, claudeArgs)
 			}
-			return attach.ToPath(sweatshopPath, format, prompt)
+			return attach.ToPath(sweatshopPath, format, claudeArgs)
 		}
 
 		target := worktree.ParseTarget(args[0])
@@ -65,10 +65,10 @@ var attachCmd = &cobra.Command{
 
 		fullPath := home + "/" + target.Path
 		if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-			return attach.Existing(target.Path, format, prompt)
+			return attach.Existing(target.Path, format, claudeArgs)
 		}
 
-		return attach.ToPath(target.Path, format, prompt)
+		return attach.ToPath(target.Path, format, claudeArgs)
 	},
 }
 
