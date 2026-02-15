@@ -137,7 +137,7 @@ func PostZmx(sweatshopPath, format string) error {
 		tw.PlanAhead(estimateSteps(action))
 	}
 
-	return executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, comp.Worktree, tw)
+	return executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, comp.Worktree, format, tw)
 }
 
 func chooseAction(worktreeName string, hasUncommitted bool) (string, error) {
@@ -198,7 +198,7 @@ func tapStep(tw *tap.Writer, desc string, err error) error {
 	return err
 }
 
-func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, worktreeName string, tw *tap.Writer) error {
+func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, worktreeName, format string, tw *tap.Writer) error {
 	home, _ := os.UserHomeDir()
 
 	// Pull
@@ -206,9 +206,9 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 		err := runGit(tw, repoPath, "pull")
 		if tapStep(tw, "pull "+defaultBranch, err) != nil {
 			if tw == nil {
-				log.Error("pull failed")
+				log.Error("pull failed, reattaching to session to resolve")
 			}
-			return err
+			return Existing(sweatshopPath, format)
 		}
 		if tw == nil {
 			log.Info("pulled from origin", "branch", defaultBranch)
@@ -219,9 +219,9 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 	err := runGit(tw, worktreePath, "rebase", defaultBranch)
 	if tapStep(tw, "rebase "+worktreeName+" onto "+defaultBranch, err) != nil {
 		if tw == nil {
-			log.Error("rebase failed")
+			log.Error("rebase failed, reattaching to session to resolve conflicts")
 		}
-		return err
+		return Existing(sweatshopPath, format)
 	}
 	if tw == nil {
 		log.Info("rebased onto default branch", "worktree", worktreeName, "base", defaultBranch)
@@ -246,7 +246,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 	mergeErr := runGit(tw, repoPath, "merge", worktreeName, "--ff-only")
 	if tapStep(tw, "merge "+worktreeName+" into "+defaultBranch, mergeErr) != nil {
 		if tw == nil {
-			log.Error("merge failed (not fast-forward)")
+			log.Error("merge failed (not fast-forward), reattaching to session to resolve")
 		}
 		if repoStashed {
 			runGit(tw, repoPath, "stash", "pop")
@@ -254,7 +254,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 				log.Info("restored stashed changes", "path", repoPath)
 			}
 		}
-		return mergeErr
+		return Existing(sweatshopPath, format)
 	}
 	if tw == nil {
 		log.Info("merged into default branch", "worktree", worktreeName, "base", defaultBranch)
