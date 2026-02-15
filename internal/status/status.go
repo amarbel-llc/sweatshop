@@ -174,7 +174,7 @@ func renderTable(data [][]string) string {
 	headers := []string{"Repo", "Branch", "Status", "Remote", "Commit", "Modified"}
 
 	t := table.New().
-		Border(lipgloss.NormalBorder()).
+		Border(lipgloss.RoundedBorder()).
 		BorderStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("15"))).
 		Headers(headers...).
 		Rows(data...).
