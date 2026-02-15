@@ -3,8 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/23d72dabcb3b12469f57b37170fcbc1789bd7457";
-    nixpkgs-master.url = "github:NixOS/nixpkgs/b28c4999ed71543e71552ccfd0d7e68c581ba7e9";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
+    go.url = "github:friedenberg/eng?dir=devenvs/go";
     shell.url = "github:friedenberg/eng?dir=devenvs/shell";
   };
 
@@ -12,8 +12,8 @@
     {
       self,
       nixpkgs,
-      nixpkgs-master,
       utils,
+      go,
       shell,
     }:
     utils.lib.eachDefaultSystem (
@@ -21,20 +21,20 @@
       let
         pkgs = import nixpkgs {
           inherit system;
+          overlays = [
+            go.overlays.default
+          ];
         };
 
-        mkScript = name: file:
-          (pkgs.writeScriptBin name (builtins.readFile file)).overrideAttrs (old: {
-            buildCommand = "${old.buildCommand}\n patchShebangs $out";
-          });
+        version = "0.1.0";
 
-        sweatshop = mkScript "sweatshop" ./bin/sweatshop;
-        sweatshop-merge = mkScript "sweatshop-merge" ./bin/sweatshop-merge;
-        sweatshop-completions = mkScript "sweatshop-completions" ./bin/sweatshop-completions;
-
-        runtimeDeps = with pkgs; [
-          gum
-        ];
+        sweatshop = pkgs.buildGoApplication {
+          pname = "sweatshop";
+          inherit version;
+          src = ./.;
+          modules = ./gomod2nix.toml;
+          subPackages = [ "cmd/sweatshop" ];
+        };
 
         shellCompletions = pkgs.runCommand "sweatshop-completions-files" { } ''
           install -Dm644 ${./completions/sweatshop.bash-completion} \
@@ -48,25 +48,17 @@
           name = "sweatshop";
           paths = [
             sweatshop
-            sweatshop-merge
-            sweatshop-completions
             shellCompletions
-          ] ++ runtimeDeps;
-          buildInputs = [ pkgs.makeWrapper ];
-          postBuild = ''
-            for bin in sweatshop sweatshop-merge sweatshop-completions; do
-              wrapProgram $out/bin/$bin --prefix PATH : $out/bin
-            done
-          '';
+          ];
         };
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             just
-            gum
           ];
 
           inputsFrom = [
+            go.devShells.${system}.default
             shell.devShells.${system}.default
           ];
 
@@ -77,7 +69,7 @@
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/sweatshop";
+          program = "${sweatshop}/bin/sweatshop";
         };
       }
     );

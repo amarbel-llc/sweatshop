@@ -15,6 +15,13 @@ complete \
 complete \
   --command sweatshop \
   --no-files \
+  --condition __fish_use_subcommand \
+  --arguments "merge" \
+  --description "merge current worktree into main"
+
+complete \
+  --command sweatshop \
+  --no-files \
   --keep-order \
   --condition "__fish_seen_subcommand_from attach" \
-  --arguments "(sweatshop-completions)"
+  --arguments "(sweatshop completions)"

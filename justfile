@@ -3,26 +3,39 @@
 default:
     @just --list
 
-# Build the package
+# Build the nix package
 build:
     nix build
 
-# Run the script
+# Build Go binary directly
+build-go: build-gomod2nix
+    nix develop --command go build -o sweatshop ./cmd/sweatshop
+
+# Regenerate gomod2nix.toml
+build-gomod2nix:
+    nix develop --command gomod2nix
+
+# Run the binary
 run *ARGS:
     nix run . -- {{ARGS}}
 
-# Run tests
+# Run Go unit tests
 test:
+    nix develop --command go test ./...
+
+# Run bats integration tests
+test-bats:
     nix develop --command bats tests/
 
-# Check with shellcheck
-check:
-    nix develop --command shellcheck bin/sweatshop bin/sweatshop-merge bin/sweatshop-completions
-
-# Format with shfmt
+# Format Go code
 fmt:
-    nix develop --command shfmt -w -i 2 -ci bin/sweatshop bin/sweatshop-merge bin/sweatshop-completions
+    nix develop --command gofumpt -w .
+
+# Update Go dependencies
+deps:
+    nix develop --command go mod tidy
+    nix develop --command gomod2nix
 
 # Clean build artifacts
 clean:
-    rm -rf result
+    rm -rf result sweatshop

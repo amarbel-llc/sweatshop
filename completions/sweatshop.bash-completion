@@ -3,7 +3,7 @@ _sweatshop_complete() {
   COMPREPLY=()
 
   if [[ "$COMP_CWORD" -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "attach status" -- "$cur"))
+    COMPREPLY=($(compgen -W "attach status merge" -- "$cur"))
     return
   fi
 
@@ -11,7 +11,7 @@ _sweatshop_complete() {
   if [[ "$subcommand" == "attach" ]]; then
     while IFS=$'\t' read -r path _desc; do
       [[ "$path" == "$cur"* ]] && COMPREPLY+=("$path")
-    done < <(sweatshop-completions 2>/dev/null)
+    done < <(sweatshop completions 2>/dev/null)
   fi
 }
 complete -F _sweatshop_complete sweatshop
