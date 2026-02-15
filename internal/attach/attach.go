@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/log"
@@ -101,8 +102,8 @@ func PostZmx(sweatshopPath, format string) error {
 
 	if commitsAhead == 0 && worktreeStatus == "" {
 		if tw != nil {
+			tw.PlanAhead(1)
 			tw.Skip("post-zmx "+comp.Worktree, "no changes")
-			tw.Plan()
 		} else {
 			log.Info("no changes in worktree", "worktree", comp.Worktree)
 		}
@@ -123,16 +124,16 @@ func PostZmx(sweatshopPath, format string) error {
 	action, err := chooseAction(comp.Worktree, hasUncommitted)
 	if err != nil || action == "" {
 		if tw != nil {
-			tw.Plan()
+			tw.PlanAhead(0)
 		}
 		return nil
 	}
 
-	err = executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, comp.Worktree, tw)
 	if tw != nil {
-		tw.Plan()
+		tw.PlanAhead(estimateSteps(action))
 	}
-	return err
+
+	return executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, comp.Worktree, tw)
 }
 
 func chooseAction(worktreeName string, hasUncommitted bool) (string, error) {
@@ -312,4 +313,21 @@ func containsRemoveWorktree(action string) bool {
 	return len(action) > 15 && (action == "Rebase + Merge + Remove worktree" ||
 		action == "Rebase + Merge + Remove worktree + Push" ||
 		action == "Pull + Rebase + Merge + Remove worktree + Push")
+}
+
+func estimateSteps(action string) int {
+	n := 1 // rebase is always present
+	if strings.HasPrefix(action, "Pull") {
+		n++
+	}
+	if action != "Rebase" {
+		n++ // merge
+	}
+	if containsRemoveWorktree(action) {
+		n += 2 // remove worktree + delete branch
+	}
+	if strings.HasSuffix(action, "Push") {
+		n++
+	}
+	return n
 }

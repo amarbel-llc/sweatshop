@@ -93,6 +93,23 @@ func TestSkipEmitsDirective(t *testing.T) {
 	}
 }
 
+func TestPlanAheadEmitsCount(t *testing.T) {
+	var buf bytes.Buffer
+	tw := NewWriter(&buf)
+	tw.PlanAhead(3)
+	tw.Ok("a")
+	tw.Ok("b")
+	tw.Ok("c")
+	out := buf.String()
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if lines[1] != "1..3" {
+		t.Errorf("expected plan-ahead line 1..3 after header, got: %q", lines[1])
+	}
+	if lines[2] != "ok 1 - a" {
+		t.Errorf("expected first test after plan, got: %q", lines[2])
+	}
+}
+
 func TestPlanEmitsCount(t *testing.T) {
 	var buf bytes.Buffer
 	tw := NewWriter(&buf)

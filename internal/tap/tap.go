@@ -55,6 +55,10 @@ func (tw *Writer) Skip(description, reason string) int {
 	return tw.n
 }
 
+func (tw *Writer) PlanAhead(n int) {
+	fmt.Fprintf(tw.w, "1..%d\n", n)
+}
+
 func (tw *Writer) Plan() {
 	fmt.Fprintf(tw.w, "1..%d\n", tw.n)
 }
