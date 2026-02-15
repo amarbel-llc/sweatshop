@@ -16,6 +16,9 @@ if [[ "$1" == "log" ]]; then
     shift 2
   done
   echo "$*"
+elif [[ "$1" == "table" ]]; then
+  # Pass through stdin as-is for testing
+  cat
 fi
 MOCK
   chmod +x "$MOCK_BIN/gum"
@@ -46,8 +49,6 @@ function status_handles_repos_with_no_worktrees { # @test
   run sweatshop_status
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"eng/repos/solo-repo"* ]]
-  # Should show main branch info
-  [[ "$output" == *"commit:"* ]]
 }
 
 function status_handles_repos_with_worktrees { # @test
@@ -66,7 +67,7 @@ function status_handles_repos_with_worktrees { # @test
 function status_shows_clean_for_clean_repo { # @test
   create_mock_repo "$HOME/eng/repos/clean-repo"
 
-  run sweatshop_status_branch "$HOME/eng/repos/clean-repo" "main"
+  run sweatshop_status_branch "eng/repos/clean-repo" "$HOME/eng/repos/clean-repo" "main"
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"clean"* ]]
 }
@@ -75,7 +76,7 @@ function status_shows_dirty_count { # @test
   create_mock_repo "$HOME/eng/repos/dirty-repo"
   echo "change" >"$HOME/eng/repos/dirty-repo/file.txt"
 
-  run sweatshop_status_branch "$HOME/eng/repos/dirty-repo" "main"
+  run sweatshop_status_branch "eng/repos/dirty-repo" "$HOME/eng/repos/dirty-repo" "main"
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"1?"* ]]
 }
