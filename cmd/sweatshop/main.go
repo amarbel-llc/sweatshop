@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/amarbel-llc/sweatshop/internal/attach"
+	"github.com/amarbel-llc/sweatshop/internal/clean"
 	"github.com/amarbel-llc/sweatshop/internal/completions"
 	"github.com/amarbel-llc/sweatshop/internal/merge"
 	"github.com/amarbel-llc/sweatshop/internal/status"
@@ -89,6 +90,22 @@ var mergeCmd = &cobra.Command{
 	},
 }
 
+var cleanInteractive bool
+
+var cleanCmd = &cobra.Command{
+	Use:   "clean",
+	Short: "Remove merged worktrees",
+	Long:  `Scan all worktrees, identify those whose branches are fully merged into the main branch, and remove them. Use -i to interactively handle dirty worktrees.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+
+		return clean.Run(home, cleanInteractive)
+	},
+}
+
 var completionsCmd = &cobra.Command{
 	Use:    "completions",
 	Short:  "Generate tab-separated completions",
@@ -107,9 +124,11 @@ var completionsCmd = &cobra.Command{
 }
 
 func init() {
+	cleanCmd.Flags().BoolVarP(&cleanInteractive, "interactive", "i", false, "interactively discard changes in dirty merged worktrees")
 	rootCmd.AddCommand(attachCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(mergeCmd)
+	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(completionsCmd)
 }
 

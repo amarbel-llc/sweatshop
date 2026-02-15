@@ -95,6 +95,30 @@ func HasDirtyTracked(repoPath string) bool {
 	return false
 }
 
+func CheckoutFile(repoPath, file string) error {
+	_, err := Run(repoPath, "checkout", "--", file)
+	return err
+}
+
+func ResetFile(repoPath, file string) error {
+	_, err := Run(repoPath, "reset", "HEAD", "--", file)
+	return err
+}
+
+func WorktreeRemove(repoPath, worktreePath string) error {
+	_, err := Run(repoPath, "worktree", "remove", worktreePath)
+	return err
+}
+
+func BranchDelete(repoPath, branch string) error {
+	_, err := Run(repoPath, "branch", "-d", branch)
+	return err
+}
+
+func DefaultBranch(repoPath string) (string, error) {
+	return BranchCurrent(repoPath)
+}
+
 func NewestFileTime(path string) time.Time {
 	var newest time.Time
 	filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
