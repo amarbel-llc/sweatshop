@@ -1,6 +1,8 @@
 package sweatfile
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -49,6 +51,30 @@ content = "use flake ."
 
 func TestParseEmpty(t *testing.T) {
 	sf, err := Parse([]byte(""))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sf.GitExcludes != nil {
+		t.Errorf("expected nil git_excludes, got %v", sf.GitExcludes)
+	}
+}
+
+func TestLoadFromPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sweatfile")
+	os.WriteFile(path, []byte(`git_excludes = [".direnv/"]`), 0o644)
+
+	sf, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(sf.GitExcludes) != 1 || sf.GitExcludes[0] != ".direnv/" {
+		t.Errorf("git_excludes: got %v", sf.GitExcludes)
+	}
+}
+
+func TestLoadMissing(t *testing.T) {
+	sf, err := Load("/nonexistent/sweatfile")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

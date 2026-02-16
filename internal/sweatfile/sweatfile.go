@@ -1,6 +1,10 @@
 package sweatfile
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -22,4 +26,15 @@ func Parse(data []byte) (Sweatfile, error) {
 		return Sweatfile{}, err
 	}
 	return sf, nil
+}
+
+func Load(path string) (Sweatfile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return Sweatfile{}, nil
+		}
+		return Sweatfile{}, err
+	}
+	return Parse(data)
 }
