@@ -46,7 +46,7 @@ function clean_removes_merged_clean_worktrees { # @test
   run sweatshop clean
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"TAP version 14"* ]]
-  [[ "$output" == *"ok"*'remove eng/worktrees/myrepo/`done-branch`'* ]]
+  [[ "$output" == *"ok"*"remove eng/worktrees/myrepo/"*"done-branch"* ]]
   [[ ! -d "$HOME/eng/worktrees/myrepo/done-branch" ]]
 }
 

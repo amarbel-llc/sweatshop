@@ -212,6 +212,7 @@ func renderTable(data [][]string) string {
 }
 
 var styleHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))
+var styleCode = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
 
 func Render(rows []BranchStatus) string {
 	var repoRows, worktreeRows, cleanRows [][]string
@@ -245,7 +246,7 @@ func Render(rows []BranchStatus) string {
 func RenderTap(rows []BranchStatus, w io.Writer) {
 	tw := tap.NewWriter(w)
 	for _, r := range rows {
-		desc := r.Repo + " `" + r.Branch + "`"
+		desc := r.Repo + " " + styleCode.Render(r.Branch)
 		tw.Ok(desc)
 	}
 	tw.Plan()

@@ -7,11 +7,14 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 
 	"github.com/amarbel-llc/sweatshop/internal/git"
 	"github.com/amarbel-llc/sweatshop/internal/tap"
 )
+
+var styleCode = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
 
 type FileChange struct {
 	Code string
@@ -245,7 +248,7 @@ func runTap(home string, interactive bool) error {
 			continue
 		}
 
-		label := wt.engArea + "/worktrees/" + wt.repo + "/`" + wt.branch + "`"
+		label := wt.engArea + "/worktrees/" + wt.repo + "/" + styleCode.Render(wt.branch)
 
 		if !wt.dirty {
 			if err := removeWorktree(wt); err != nil {
