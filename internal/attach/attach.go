@@ -13,6 +13,7 @@ import (
 
 	"github.com/amarbel-llc/sweatshop/internal/flake"
 	"github.com/amarbel-llc/sweatshop/internal/git"
+	"github.com/amarbel-llc/sweatshop/internal/perms"
 	"github.com/amarbel-llc/sweatshop/internal/tap"
 	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
@@ -29,6 +30,10 @@ func Remote(host, path string) error {
 }
 
 func Existing(sweatshopPath, format string, claudeArgs []string) error {
+	home, _ := os.UserHomeDir()
+	worktreePath := worktree.WorktreePath(home, sweatshopPath)
+	perms.SnapshotSettings(worktreePath)
+
 	zmxArgs := []string{"attach", sweatshopPath}
 	if len(claudeArgs) > 0 {
 		zmxArgs = append(zmxArgs, "claude")
@@ -65,6 +70,8 @@ func ToPath(sweatshopPath, format string, claudeArgs []string) error {
 	if err := os.Chdir(worktreePath); err != nil {
 		return fmt.Errorf("changing to worktree: %w", err)
 	}
+
+	perms.SnapshotSettings(worktreePath)
 
 	zmxArgs := []string{"attach", sweatshopPath}
 	if len(claudeArgs) > 0 {
@@ -112,6 +119,12 @@ func PostZmx(sweatshopPath, format string) error {
 
 	commitsAhead := git.CommitsAhead(worktreePath, defaultBranch, comp.Worktree)
 	worktreeStatus := git.StatusPorcelain(worktreePath)
+
+	// Review new permissions
+	if reviewErr := perms.RunReviewInteractive(sweatshopPath); reviewErr != nil {
+		log.Warn("permission review skipped", "error", reviewErr)
+	}
+	perms.CleanupSnapshot(worktreePath)
 
 	var tw *tap.Writer
 	if format == "tap" {
