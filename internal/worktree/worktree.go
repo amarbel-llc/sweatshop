@@ -83,10 +83,6 @@ func ApplyRcmOverlay(engArea, worktreePath string) error {
 		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 			return err
 		}
-		data, err := os.ReadFile(src)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(dest, data, 0o644)
+		return os.Symlink(src, dest)
 	})
 }
