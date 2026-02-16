@@ -108,6 +108,51 @@ func TestDiffRulesNoChanges(t *testing.T) {
 	}
 }
 
+func TestSaveClaudeSettingsPreservesOtherFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "settings.local.json")
+
+	// Write a file with extra fields beyond permissions.allow
+	initial := `{
+  "permissions": {
+    "allow": ["Read", "Edit"],
+    "deny": ["Bash(rm -rf:*)"]
+  },
+  "env": {
+    "FOO": "bar"
+  }
+}
+`
+	os.WriteFile(path, []byte(initial), 0o644)
+
+	// Save with updated allow list
+	err := SaveClaudeSettings(path, []string{"Read"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Read back raw JSON and verify other fields survived
+	data, _ := os.ReadFile(path)
+	var doc map[string]any
+	json.Unmarshal(data, &doc)
+
+	permsMap, ok := doc["permissions"].(map[string]any)
+	if !ok {
+		t.Fatal("expected permissions key")
+	}
+	deny, ok := permsMap["deny"].([]any)
+	if !ok || len(deny) != 1 {
+		t.Errorf("expected deny list preserved, got %v", permsMap["deny"])
+	}
+	envMap, ok := doc["env"].(map[string]any)
+	if !ok {
+		t.Fatal("expected env key preserved")
+	}
+	if envMap["FOO"] != "bar" {
+		t.Errorf("expected env.FOO=bar, got %v", envMap["FOO"])
+	}
+}
+
 func TestRemoveRules(t *testing.T) {
 	rules := []string{"Read", "Edit", "Bash(go test:*)", "Write"}
 	toRemove := []string{"Edit", "Write"}

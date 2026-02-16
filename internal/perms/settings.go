@@ -34,16 +34,29 @@ func LoadClaudeSettings(path string) ([]string, error) {
 }
 
 // SaveClaudeSettings writes the allow list back to a Claude settings.local.json
-// file, creating parent directories as needed.
+// file, preserving any other top-level keys. Creates parent directories as needed.
 func SaveClaudeSettings(path string, rules []string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 
-	settings := claudeSettings{}
-	settings.Permissions.Allow = rules
+	// Read existing file to preserve non-permission fields
+	var doc map[string]any
+	if existing, err := os.ReadFile(path); err == nil {
+		json.Unmarshal(existing, &doc)
+	}
+	if doc == nil {
+		doc = make(map[string]any)
+	}
 
-	data, err := json.MarshalIndent(settings, "", "  ")
+	permsMap, _ := doc["permissions"].(map[string]any)
+	if permsMap == nil {
+		permsMap = make(map[string]any)
+	}
+	permsMap["allow"] = rules
+	doc["permissions"] = permsMap
+
+	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return err
 	}
