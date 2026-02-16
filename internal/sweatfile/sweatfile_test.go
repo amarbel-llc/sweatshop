@@ -190,6 +190,33 @@ setup = ["go mod download"]
 	}
 }
 
+func TestSaveRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sweatfile")
+
+	sf := Sweatfile{
+		GitExcludes: []string{".claude/"},
+		Env:         map[string]string{"EDITOR": "nvim"},
+		Setup:       []string{"direnv allow"},
+	}
+
+	err := Save(path, sf)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error loading: %v", err)
+	}
+	if len(loaded.GitExcludes) != 1 || loaded.GitExcludes[0] != ".claude/" {
+		t.Errorf("git_excludes roundtrip: got %v", loaded.GitExcludes)
+	}
+	if loaded.Env["EDITOR"] != "nvim" {
+		t.Errorf("env roundtrip: got %v", loaded.Env)
+	}
+}
+
 func TestLoadMergedNoFiles(t *testing.T) {
 	dir := t.TempDir()
 	sf, err := LoadMerged(filepath.Join(dir, "eng"), filepath.Join(dir, "repo"))

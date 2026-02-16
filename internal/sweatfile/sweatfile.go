@@ -81,6 +81,18 @@ func Merge(base, repo Sweatfile) Sweatfile {
 	return merged
 }
 
+func Save(path string, sf Sweatfile) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return toml.NewEncoder(f).Encode(sf)
+}
+
 func LoadMerged(engAreaDir, repoDir string) (Sweatfile, error) {
 	base, err := Load(filepath.Join(engAreaDir, "sweatfile"))
 	if err != nil {
