@@ -38,3 +38,44 @@ func Load(path string) (Sweatfile, error) {
 	}
 	return Parse(data)
 }
+
+func Merge(base, repo Sweatfile) Sweatfile {
+	merged := base
+
+	// Arrays: nil = inherit, empty = clear, non-empty = append
+	if repo.GitExcludes != nil {
+		if len(repo.GitExcludes) == 0 {
+			merged.GitExcludes = []string{}
+		} else {
+			merged.GitExcludes = append(base.GitExcludes, repo.GitExcludes...)
+		}
+	}
+	if repo.Setup != nil {
+		if len(repo.Setup) == 0 {
+			merged.Setup = []string{}
+		} else {
+			merged.Setup = append(base.Setup, repo.Setup...)
+		}
+	}
+
+	// Maps: shallow merge, repo overrides per-key
+	if repo.Env != nil {
+		if merged.Env == nil {
+			merged.Env = make(map[string]string)
+		}
+		for k, v := range repo.Env {
+			merged.Env[k] = v
+		}
+	}
+
+	if repo.Files != nil {
+		if merged.Files == nil {
+			merged.Files = make(map[string]FileEntry)
+		}
+		for k, v := range repo.Files {
+			merged.Files[k] = v
+		}
+	}
+
+	return merged
+}
