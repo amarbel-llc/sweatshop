@@ -30,7 +30,11 @@ func OpenRemote(host, path string) error {
 	return cmd.Run()
 }
 
-func OpenExisting(sweatshopPath, format string, claudeArgs []string) error {
+func OpenExisting(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+	if noAttach {
+		return nil
+	}
+
 	home, _ := os.UserHomeDir()
 	worktreePath := worktree.WorktreePath(home, sweatshopPath)
 	perms.SnapshotSettings(worktreePath)
@@ -51,7 +55,7 @@ func OpenExisting(sweatshopPath, format string, claudeArgs []string) error {
 	return CloseShop(sweatshopPath, format)
 }
 
-func OpenNew(sweatshopPath, format string, claudeArgs []string) error {
+func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return err
@@ -71,6 +75,10 @@ func OpenNew(sweatshopPath, format string, claudeArgs []string) error {
 
 	if err := os.Chdir(worktreePath); err != nil {
 		return fmt.Errorf("changing to worktree: %w", err)
+	}
+
+	if noAttach {
+		return nil
 	}
 
 	perms.SnapshotSettings(worktreePath)
@@ -212,7 +220,7 @@ func CloseShop(sweatshopPath, format string) error {
 	}
 
 	if action == "Abort" {
-		return OpenExisting(sweatshopPath, format, nil)
+		return OpenExisting(sweatshopPath, format, false, nil)
 	}
 
 	if tw != nil {
@@ -290,7 +298,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 			if tw == nil {
 				log.Error("pull failed, reopening shop to resolve")
 			}
-			return OpenExisting(sweatshopPath, format, nil)
+			return OpenExisting(sweatshopPath, format, false, nil)
 		}
 		if tw == nil {
 			log.Info("pulled from origin", "branch", defaultBranch)
@@ -303,7 +311,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 		if tw == nil {
 			log.Error("rebase failed, reopening shop to resolve conflicts")
 		}
-		return OpenExisting(sweatshopPath, format, nil)
+		return OpenExisting(sweatshopPath, format, false, nil)
 	}
 	if tw == nil {
 		log.Info("rebased onto default branch", "worktree", worktreeName, "base", defaultBranch)
@@ -336,7 +344,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 				log.Info("restored stashed changes", "path", repoPath)
 			}
 		}
-		return OpenExisting(sweatshopPath, format, nil)
+		return OpenExisting(sweatshopPath, format, false, nil)
 	}
 	if tw == nil {
 		log.Info("merged into default branch", "worktree", worktreeName, "base", defaultBranch)

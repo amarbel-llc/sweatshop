@@ -97,6 +97,24 @@ EOF
   [[ "$(cat "$envrc")" == "custom envrc" ]]
 }
 
+function no_attach_creates_worktree_without_calling_zmx { # @test
+  # Make zmx create a marker file so we can detect if it ran
+  cat > "$MOCK_BIN/zmx" <<'MOCKEOF'
+#!/bin/bash
+touch "$HOME/.zmx-was-called"
+exit 0
+MOCKEOF
+  chmod +x "$MOCK_BIN/zmx"
+
+  run sweatshop open "eng/worktrees/testrepo/feature-noattach" --no-attach --format tap
+  [[ "$status" -eq 0 ]]
+  # Worktree should be created and sweatfile applied
+  [[ -d "$HOME/eng/worktrees/testrepo/feature-noattach" ]]
+  [[ -f "$HOME/eng/worktrees/testrepo/feature-noattach/.envrc" ]]
+  # zmx should NOT have been called
+  [[ ! -f "$HOME/.zmx-was-called" ]]
+}
+
 function sweatfile_empty_sections_produce_no_dotfiles_or_env { # @test
   # Replace eng-area sweatfile with one that has only git_excludes
   # (no files, no env). This verifies graceful fallback when those
