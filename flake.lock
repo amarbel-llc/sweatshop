@@ -2850,11 +2850,11 @@
         "utils": "utils_44"
       },
       "locked": {
-        "lastModified": 1771271066,
-        "narHash": "sha256-cFjfqqNCKGgW5Z+ll3ef0nPmjHdSs8NiTF7xaDWrX0k=",
+        "lastModified": 1771341919,
+        "narHash": "sha256-L1Yz9N9JPQW5yFwjS7KYsRnmZ/NPNAXRyt42Mfe7I9g=",
         "owner": "amarbel-llc",
         "repo": "sandcastle",
-        "rev": "a1d51e31d5b9608abfbd5d062cb4199c8aa1768c",
+        "rev": "1fbaa2377188553ce7991744700e8ff939a05ad7",
         "type": "github"
       },
       "original": {
