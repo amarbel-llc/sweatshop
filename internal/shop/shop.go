@@ -296,9 +296,10 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 		err := runGit(tw, repoPath, "pull")
 		if tapStep(tw, "pull "+styleCode.Render(defaultBranch), err) != nil {
 			if tw == nil {
-				log.Error("pull failed, reopening shop to resolve")
+				log.Error("pull failed")
+				log.Info("to resolve, reopen the shop manually", "path", sweatshopPath)
 			}
-			return OpenExisting(sweatshopPath, format, false, nil)
+			return fmt.Errorf("pull failed: %w", err)
 		}
 		if tw == nil {
 			log.Info("pulled from origin", "branch", defaultBranch)
@@ -309,9 +310,10 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 	err := runGit(tw, worktreePath, "rebase", defaultBranch)
 	if tapStep(tw, "rebase "+styleCode.Render(worktreeName)+" onto "+styleCode.Render(defaultBranch), err) != nil {
 		if tw == nil {
-			log.Error("rebase failed, reopening shop to resolve conflicts")
+			log.Error("rebase failed")
+			log.Info("to resolve conflicts, reopen the shop manually", "path", sweatshopPath)
 		}
-		return OpenExisting(sweatshopPath, format, false, nil)
+		return fmt.Errorf("rebase failed: %w", err)
 	}
 	if tw == nil {
 		log.Info("rebased onto default branch", "worktree", worktreeName, "base", defaultBranch)
@@ -336,7 +338,8 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 	mergeErr := runGit(tw, repoPath, "merge", worktreeName, "--ff-only")
 	if tapStep(tw, "merge "+styleCode.Render(worktreeName)+" into "+styleCode.Render(defaultBranch), mergeErr) != nil {
 		if tw == nil {
-			log.Error("merge failed (not fast-forward), reopening shop to resolve")
+			log.Error("merge failed (not fast-forward)")
+			log.Info("to resolve, reopen the shop manually", "path", sweatshopPath)
 		}
 		if repoStashed {
 			runGit(tw, repoPath, "stash", "pop")
@@ -344,7 +347,7 @@ func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch,
 				log.Info("restored stashed changes", "path", repoPath)
 			}
 		}
-		return OpenExisting(sweatshopPath, format, false, nil)
+		return fmt.Errorf("merge failed (not fast-forward): %w", mergeErr)
 	}
 	if tw == nil {
 		log.Info("merged into default branch", "worktree", worktreeName, "base", defaultBranch)
