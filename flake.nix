@@ -40,20 +40,42 @@
           subPackages = [ "cmd/sweatshop" ];
         };
 
+        spinclass = pkgs.buildGoApplication {
+          pname = "spinclass";
+          inherit version;
+          src = ./.;
+          modules = ./gomod2nix.toml;
+          subPackages = [ "cmd/spinclass" ];
+        };
+
         shellCompletions = pkgs.runCommand "sweatshop-completions-files" { } ''
           install -Dm644 ${./completions/sweatshop.bash-completion} \
             $out/share/bash-completion/completions/sweatshop
           install -Dm644 ${./completions/sweatshop.fish} \
             $out/share/fish/vendor_completions.d/sweatshop.fish
+          install -Dm644 ${./completions/spinclass.bash-completion} \
+            $out/share/bash-completion/completions/spinclass
+          install -Dm644 ${./completions/spinclass.fish} \
+            $out/share/fish/vendor_completions.d/spinclass.fish
         '';
       in
       {
-        packages.default = pkgs.symlinkJoin {
-          name = "sweatshop";
-          paths = [
-            sweatshop
-            shellCompletions
-          ];
+        packages = {
+          default = pkgs.symlinkJoin {
+            name = "sweatshop";
+            paths = [
+              sweatshop
+              shellCompletions
+            ];
+          };
+
+          spinclass = pkgs.symlinkJoin {
+            name = "spinclass";
+            paths = [
+              spinclass
+              shellCompletions
+            ];
+          };
         };
 
         devShells.default = pkgs.mkShell {
@@ -75,9 +97,16 @@
           '';
         };
 
-        apps.default = {
-          type = "app";
-          program = "${sweatshop}/bin/sweatshop";
+        apps = {
+          default = {
+            type = "app";
+            program = "${sweatshop}/bin/sweatshop";
+          };
+
+          spinclass = {
+            type = "app";
+            program = "${spinclass}/bin/spinclass";
+          };
         };
       }
     );
