@@ -33,6 +33,8 @@ function status_handles_repos_with_no_worktrees { # @test
 }
 
 function status_handles_repos_with_worktrees { # @test
+  # eng* areas exclude worktrees from status (5a2df2c), so only the
+  # main branch row should appear even when a worktree exists.
   create_mock_repo "$HOME/eng/repos/myrepo"
 
   local worktree_path="$HOME/eng/worktrees/myrepo/feature-x"
@@ -42,7 +44,7 @@ function status_handles_repos_with_worktrees { # @test
   run sweatshop status
   [[ "$status" -eq 0 ]]
   [[ "$output" == *"eng/repos/myrepo"* ]]
-  [[ "$output" == *"feature-x"* ]]
+  [[ "$output" != *"feature-x"* ]]
 }
 
 function status_shows_clean_for_clean_repo { # @test
