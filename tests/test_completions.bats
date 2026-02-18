@@ -18,6 +18,7 @@ function completions_lists_repos_as_new_worktree { # @test
 function completions_lists_existing_worktrees { # @test
   mkdir -p "$HOME/eng/repos/myrepo"
   mkdir -p "$HOME/eng/worktrees/myrepo/feature-x"
+  echo "gitdir: $HOME/eng/repos/myrepo/.git/worktrees/feature-x" > "$HOME/eng/worktrees/myrepo/feature-x/.git"
 
   run sweatshop completions
   [[ "$status" -eq 0 ]]
