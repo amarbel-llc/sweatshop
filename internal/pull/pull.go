@@ -1,4 +1,4 @@
-package update
+package pull
 
 import (
 	"fmt"
@@ -95,7 +95,7 @@ func Run(home string, dirty bool) error {
 	worktrees := scanWorktrees(home, repos)
 
 	if len(repos) == 0 && len(worktrees) == 0 {
-		tw.Skip("update", "no repos found")
+		tw.Skip("pull", "no repos found")
 		tw.Plan()
 		return nil
 	}

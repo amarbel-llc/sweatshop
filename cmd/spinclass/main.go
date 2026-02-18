@@ -13,7 +13,7 @@ import (
 	"github.com/amarbel-llc/sweatshop/internal/merge"
 	"github.com/amarbel-llc/sweatshop/internal/perms"
 	"github.com/amarbel-llc/sweatshop/internal/status"
-	"github.com/amarbel-llc/sweatshop/internal/update"
+	"github.com/amarbel-llc/sweatshop/internal/pull"
 	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
@@ -118,10 +118,10 @@ var openNoAttach bool
 var openIntegratePerms bool
 var cleanInteractive bool
 
-var updateDirty bool
+var pullDirty bool
 
-var updateCmd = &cobra.Command{
-	Use:   "update",
+var pullCmd = &cobra.Command{
+	Use:   "pull",
 	Short: "Pull repos and rebase worktrees",
 	Long:  `Pull all clean repos, then rebase all clean worktrees onto their repo's default branch. Use -d to include dirty repos and worktrees.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -129,7 +129,7 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return update.Run(home, updateDirty)
+		return pull.Run(home, pullDirty)
 	},
 }
 
@@ -179,8 +179,8 @@ func init() {
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(cleanCmd)
 	rootCmd.AddCommand(completionsCmd)
-	updateCmd.Flags().BoolVarP(&updateDirty, "dirty", "d", false, "include dirty repos and worktrees")
-	rootCmd.AddCommand(updateCmd)
+	pullCmd.Flags().BoolVarP(&pullDirty, "dirty", "d", false, "include dirty repos and worktrees")
+	rootCmd.AddCommand(pullCmd)
 	rootCmd.AddCommand(perms.NewPermsCmd())
 }
 
