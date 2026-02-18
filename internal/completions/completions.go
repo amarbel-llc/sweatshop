@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
 func Local(home string, w io.Writer) {
@@ -40,6 +42,10 @@ func Local(home string, w io.Writer) {
 			}
 			for _, wt := range worktrees {
 				if !wt.IsDir() {
+					continue
+				}
+				wtPath := filepath.Join(worktreeDir, wt.Name())
+				if !worktree.IsWorktree(wtPath) {
 					continue
 				}
 				fmt.Fprintf(w, "%s/worktrees/%s/%s\texisting worktree\n", area, repo.Name(), wt.Name())

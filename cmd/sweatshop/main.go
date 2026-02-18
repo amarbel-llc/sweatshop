@@ -7,13 +7,13 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 
-	"github.com/amarbel-llc/sweatshop/internal/shop"
 	"github.com/amarbel-llc/sweatshop/internal/clean"
 	"github.com/amarbel-llc/sweatshop/internal/completions"
 	"github.com/amarbel-llc/sweatshop/internal/merge"
 	"github.com/amarbel-llc/sweatshop/internal/perms"
-	"github.com/amarbel-llc/sweatshop/internal/status"
 	"github.com/amarbel-llc/sweatshop/internal/pull"
+	"github.com/amarbel-llc/sweatshop/internal/shop"
+	"github.com/amarbel-llc/sweatshop/internal/status"
 	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
@@ -30,7 +30,7 @@ var openCmd = &cobra.Command{
 	Aliases: []string{"attach"},
 	Short:   "Open a worktree shop",
 	Long:    `Open an existing or new worktree shop. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
-	Args:  cobra.ArbitraryArgs,
+	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -114,9 +114,11 @@ var mergeCmd = &cobra.Command{
 	},
 }
 
-var openNoAttach bool
-var openIntegratePerms bool
-var cleanInteractive bool
+var (
+	openNoAttach       bool
+	openIntegratePerms bool
+	cleanInteractive   bool
+)
 
 var pullDirty bool
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/amarbel-llc/sweatshop/internal/git"
 	"github.com/amarbel-llc/sweatshop/internal/tap"
+	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
 var styleCode = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
@@ -99,6 +100,9 @@ func scanWorktrees(home string) []worktreeInfo {
 					continue
 				}
 				wtPath := filepath.Join(wtDir, entry.Name())
+				if !worktree.IsWorktree(wtPath) {
+					continue
+				}
 				branch := entry.Name()
 
 				ahead := git.CommitsAhead(wtPath, defaultBranch, branch)

@@ -28,6 +28,7 @@ func TestLocalListsExistingWorktrees(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "eng", "repos", "myrepo"), 0o755)
 	os.MkdirAll(filepath.Join(tmpDir, "eng", "worktrees", "myrepo", "feature-x"), 0o755)
+	os.WriteFile(filepath.Join(tmpDir, "eng", "worktrees", "myrepo", "feature-x", ".git"), []byte("gitdir: ../../repos/myrepo/.git/worktrees/feature-x\n"), 0o644)
 
 	var buf bytes.Buffer
 	Local(tmpDir, &buf)

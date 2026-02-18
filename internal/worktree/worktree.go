@@ -126,6 +126,14 @@ func injectWorktreePerms(worktreePath string) error {
 	return os.WriteFile(settingsPath, append(data, '\n'), 0o644)
 }
 
+func IsWorktree(path string) bool {
+	info, err := os.Lstat(filepath.Join(path, ".git"))
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func appendUnique(existing []string, rules ...string) []string {
 	set := make(map[string]bool, len(existing))
 	for _, r := range existing {

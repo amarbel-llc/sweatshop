@@ -171,4 +171,3 @@ func TestInjectWorktreePermsIdempotent(t *testing.T) {
 		t.Fatalf("expected 3 rules after double inject, got %d", len(allowRaw))
 	}
 }
-

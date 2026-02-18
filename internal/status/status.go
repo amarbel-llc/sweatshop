@@ -13,6 +13,7 @@ import (
 
 	"github.com/amarbel-llc/sweatshop/internal/git"
 	"github.com/amarbel-llc/sweatshop/internal/tap"
+	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
 type BranchStatus struct {
@@ -136,6 +137,9 @@ func CollectRepoStatus(home, engArea, repo string) []BranchStatus {
 			continue
 		}
 		wtPath := filepath.Join(worktreesDir, entry.Name())
+		if !worktree.IsWorktree(wtPath) {
+			continue
+		}
 		bs := CollectBranchStatus(repoLabel, wtPath, entry.Name())
 		bs.IsWorktree = true
 		rows = append(rows, bs)
@@ -211,8 +215,10 @@ func renderTable(data [][]string) string {
 	return t.Render()
 }
 
-var styleHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))
-var styleCode = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
+var (
+	styleHeader = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))
+	styleCode   = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
+)
 
 func Render(rows []BranchStatus) string {
 	var repoRows, worktreeRows, cleanRows [][]string
