@@ -35,6 +35,11 @@ func OpenExisting(sweatshopPath, format string, noAttach, integratePerms bool, c
 		return nil
 	}
 
+	comp, err := worktree.ParsePath(sweatshopPath)
+	if err != nil {
+		return err
+	}
+
 	home, _ := os.UserHomeDir()
 	worktreePath := worktree.WorktreePath(home, sweatshopPath)
 	if integratePerms {
@@ -42,7 +47,7 @@ func OpenExisting(sweatshopPath, format string, noAttach, integratePerms bool, c
 	}
 	sweatfile.SnapshotEnv(worktreePath)
 
-	zmxArgs := []string{"attach", sweatshopPath}
+	zmxArgs := []string{"attach", comp.ShopKey()}
 	if len(claudeArgs) > 0 {
 		zmxArgs = append(zmxArgs, "claude")
 		zmxArgs = append(zmxArgs, claudeArgs...)
@@ -52,7 +57,9 @@ func OpenExisting(sweatshopPath, format string, noAttach, integratePerms bool, c
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	_ = cmd.Run() // zmx returns non-zero on detach
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("zmx attach failed: %w", err)
+	}
 
 	return CloseShop(sweatshopPath, format, integratePerms)
 }
@@ -88,7 +95,7 @@ func OpenNew(sweatshopPath, format string, noAttach, integratePerms bool, claude
 	}
 	sweatfile.SnapshotEnv(worktreePath)
 
-	zmxArgs := []string{"attach", sweatshopPath}
+	zmxArgs := []string{"attach", comp.ShopKey()}
 	if len(claudeArgs) > 0 {
 		if flake.HasDevShell(worktreePath) {
 			log.Info("flake.nix detected, starting claude in nix develop")
@@ -107,7 +114,9 @@ func OpenNew(sweatshopPath, format string, noAttach, integratePerms bool, claude
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("zmx attach failed: %w", err)
+	}
 
 	return CloseShop(sweatshopPath, format, integratePerms)
 }

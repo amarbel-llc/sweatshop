@@ -46,6 +46,10 @@ func ParsePath(path string) (PathComponents, error) {
 	}, nil
 }
 
+func (c PathComponents) ShopKey() string {
+	return c.EngArea + "/" + c.Repo + "/" + c.Worktree
+}
+
 func RepoPath(home string, comp PathComponents) string {
 	return filepath.Join(home, comp.EngArea, "repos", comp.Repo)
 }

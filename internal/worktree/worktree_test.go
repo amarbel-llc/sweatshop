@@ -63,6 +63,15 @@ func TestParsePathValid(t *testing.T) {
 	}
 }
 
+func TestShopKey(t *testing.T) {
+	comp := PathComponents{EngArea: "eng", Repo: "purse-first", Worktree: "other-marketplaces"}
+	got := comp.ShopKey()
+	want := "eng/purse-first/other-marketplaces"
+	if got != want {
+		t.Errorf("ShopKey() = %q, want %q", got, want)
+	}
+}
+
 func TestParsePathInvalid(t *testing.T) {
 	_, err := ParsePath("eng/repos/myrepo")
 	if err == nil {
