@@ -30,14 +30,16 @@ func OpenRemote(host, path string) error {
 	return cmd.Run()
 }
 
-func OpenExisting(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+func OpenExisting(sweatshopPath, format string, noAttach, integratePerms bool, claudeArgs []string) error {
 	if noAttach {
 		return nil
 	}
 
 	home, _ := os.UserHomeDir()
 	worktreePath := worktree.WorktreePath(home, sweatshopPath)
-	perms.SnapshotSettings(worktreePath)
+	if integratePerms {
+		perms.SnapshotSettings(worktreePath)
+	}
 	sweatfile.SnapshotEnv(worktreePath)
 
 	zmxArgs := []string{"attach", sweatshopPath}
@@ -52,10 +54,10 @@ func OpenExisting(sweatshopPath, format string, noAttach bool, claudeArgs []stri
 	cmd.Stdin = os.Stdin
 	_ = cmd.Run() // zmx returns non-zero on detach
 
-	return CloseShop(sweatshopPath, format)
+	return CloseShop(sweatshopPath, format, integratePerms)
 }
 
-func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+func OpenNew(sweatshopPath, format string, noAttach, integratePerms bool, claudeArgs []string) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return err
@@ -81,7 +83,9 @@ func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) e
 		return nil
 	}
 
-	perms.SnapshotSettings(worktreePath)
+	if integratePerms {
+		perms.SnapshotSettings(worktreePath)
+	}
 	sweatfile.SnapshotEnv(worktreePath)
 
 	zmxArgs := []string{"attach", sweatshopPath}
@@ -105,10 +109,10 @@ func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) e
 	cmd.Stdin = os.Stdin
 	_ = cmd.Run()
 
-	return CloseShop(sweatshopPath, format)
+	return CloseShop(sweatshopPath, format, integratePerms)
 }
 
-func CloseShop(sweatshopPath, format string) error {
+func CloseShop(sweatshopPath, format string, integratePerms bool) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return nil // not a worktree path, nothing to do
@@ -132,10 +136,12 @@ func CloseShop(sweatshopPath, format string) error {
 	worktreeStatus := git.StatusPorcelain(worktreePath)
 
 	// Review new permissions
-	if reviewErr := perms.RunReviewInteractive(sweatshopPath); reviewErr != nil {
-		log.Warn("permission review skipped", "error", reviewErr)
+	if integratePerms {
+		if reviewErr := perms.RunReviewInteractive(sweatshopPath); reviewErr != nil {
+			log.Warn("permission review skipped", "error", reviewErr)
+		}
+		perms.CleanupSnapshot(worktreePath)
 	}
-	perms.CleanupSnapshot(worktreePath)
 
 	// Review env changes
 	added, changed, envErr := sweatfile.DiffEnv(worktreePath)
@@ -220,7 +226,7 @@ func CloseShop(sweatshopPath, format string) error {
 	}
 
 	if action == "Abort" {
-		return OpenExisting(sweatshopPath, format, false, nil)
+		return OpenExisting(sweatshopPath, format, false, integratePerms, nil)
 	}
 
 	if tw != nil {

@@ -54,9 +54,9 @@ var openCmd = &cobra.Command{
 			sweatshopPath := cwd[len(home)+1:]
 
 			if info, err := os.Stat(cwd); err == nil && info.IsDir() {
-				return shop.OpenExisting(sweatshopPath, format, openNoAttach, claudeArgs)
+				return shop.OpenExisting(sweatshopPath, format, openNoAttach, openIntegratePerms, claudeArgs)
 			}
-			return shop.OpenNew(sweatshopPath, format, openNoAttach, claudeArgs)
+			return shop.OpenNew(sweatshopPath, format, openNoAttach, openIntegratePerms, claudeArgs)
 		}
 
 		target := worktree.ParseTarget(args[0])
@@ -67,10 +67,10 @@ var openCmd = &cobra.Command{
 
 		fullPath := home + "/" + target.Path
 		if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-			return shop.OpenExisting(target.Path, format, openNoAttach, claudeArgs)
+			return shop.OpenExisting(target.Path, format, openNoAttach, openIntegratePerms, claudeArgs)
 		}
 
-		return shop.OpenNew(target.Path, format, openNoAttach, claudeArgs)
+		return shop.OpenNew(target.Path, format, openNoAttach, openIntegratePerms, claudeArgs)
 	},
 }
 
@@ -114,6 +114,7 @@ var mergeCmd = &cobra.Command{
 }
 
 var openNoAttach bool
+var openIntegratePerms bool
 var cleanInteractive bool
 
 var cleanCmd = &cobra.Command{
@@ -155,6 +156,7 @@ var completionsCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "", "output format: tap or table")
 	openCmd.Flags().BoolVar(&openNoAttach, "no-attach", false, "create worktree and apply sweatfile without attaching to a session")
+	openCmd.Flags().BoolVar(&openIntegratePerms, "integrate-perms-on-close", false, "review and integrate Claude permission changes on close")
 	cleanCmd.Flags().BoolVarP(&cleanInteractive, "interactive", "i", false, "interactively discard changes in dirty merged worktrees")
 	rootCmd.AddCommand(openCmd)
 	rootCmd.AddCommand(statusCmd)
