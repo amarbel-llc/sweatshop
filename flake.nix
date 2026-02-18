@@ -7,7 +7,6 @@
     go.url = "github:friedenberg/eng?dir=devenvs/go";
     shell.url = "github:friedenberg/eng?dir=devenvs/shell";
     batman.url = "github:amarbel-llc/batman";
-    sandcastle.url = "github:amarbel-llc/sandcastle";
   };
 
   outputs =
@@ -18,7 +17,6 @@
       go,
       shell,
       batman,
-      sandcastle,
     }:
     utils.lib.eachDefaultSystem (
       system:
@@ -79,12 +77,10 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = (with pkgs; [
-            bats
-            just
-          ]) ++ [
+          packages = [
+            pkgs.just
+            batman.packages.${system}.bats
             batman.packages.${system}.bats-libs
-            sandcastle.packages.${system}.default
           ];
 
           inputsFrom = [

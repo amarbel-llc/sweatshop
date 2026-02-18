@@ -25,7 +25,7 @@ test:
 
 # Run bats integration tests
 test-bats: build
-    nix develop --command tests/bin/run-sandcastle-bats.bash bats --tap tests/
+    nix develop --command bats --tap tests/
 
 # Format Go code
 fmt:
