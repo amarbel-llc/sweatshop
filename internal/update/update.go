@@ -1,6 +1,7 @@
 package update
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -99,6 +100,8 @@ func Run(home string, dirty bool) error {
 		return nil
 	}
 
+	var failed bool
+
 	for _, repo := range repos {
 		label := repo.engArea + "/repos/" + repo.name
 
@@ -113,6 +116,7 @@ func Run(home string, dirty bool) error {
 				"message":  err.Error(),
 				"severity": "fail",
 			})
+			failed = true
 			continue
 		}
 		tw.Ok("pull " + label)
@@ -126,12 +130,13 @@ func Run(home string, dirty bool) error {
 			continue
 		}
 
-		defaultBranch, err := git.BranchCurrent(wt.repoPath)
+		defaultBranch, err := git.DefaultBranch(wt.repoPath)
 		if err != nil || defaultBranch == "" {
 			tw.NotOk("rebase "+label, map[string]string{
 				"message":  "could not determine default branch",
 				"severity": "fail",
 			})
+			failed = true
 			continue
 		}
 
@@ -141,11 +146,17 @@ func Run(home string, dirty bool) error {
 				"message":  err.Error(),
 				"severity": "fail",
 			})
+			failed = true
 			continue
 		}
 		tw.Ok("rebase " + label)
 	}
 
 	tw.Plan()
+
+	if failed {
+		return fmt.Errorf("one or more operations failed")
+	}
+
 	return nil
 }
