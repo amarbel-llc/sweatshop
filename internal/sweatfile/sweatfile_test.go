@@ -217,6 +217,43 @@ func TestSaveRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseClaudeAllow(t *testing.T) {
+	input := `
+claude_allow = ["Read", "Bash(git *)"]
+`
+	sf, err := Parse([]byte(input))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(sf.ClaudeAllow) != 2 {
+		t.Fatalf("expected 2 claude_allow rules, got %v", sf.ClaudeAllow)
+	}
+	if sf.ClaudeAllow[0] != "Read" || sf.ClaudeAllow[1] != "Bash(git *)" {
+		t.Errorf("claude_allow: got %v", sf.ClaudeAllow)
+	}
+}
+
+func TestMergeClaudeAllowAppends(t *testing.T) {
+	base := Sweatfile{ClaudeAllow: []string{"Read", "Glob"}}
+	repo := Sweatfile{ClaudeAllow: []string{"Bash(go test:*)"}}
+	merged := Merge(base, repo)
+	if len(merged.ClaudeAllow) != 3 {
+		t.Fatalf("expected 3 claude_allow rules, got %v", merged.ClaudeAllow)
+	}
+	if merged.ClaudeAllow[2] != "Bash(go test:*)" {
+		t.Errorf("expected appended rule, got %v", merged.ClaudeAllow)
+	}
+}
+
+func TestMergeClaudeAllowClear(t *testing.T) {
+	base := Sweatfile{ClaudeAllow: []string{"Read", "Glob"}}
+	repo := Sweatfile{ClaudeAllow: []string{}}
+	merged := Merge(base, repo)
+	if len(merged.ClaudeAllow) != 0 {
+		t.Errorf("expected cleared claude_allow, got %v", merged.ClaudeAllow)
+	}
+}
+
 func TestLoadMergedNoFiles(t *testing.T) {
 	dir := t.TempDir()
 	sf, err := LoadMerged(filepath.Join(dir, "eng"), filepath.Join(dir, "repo"))

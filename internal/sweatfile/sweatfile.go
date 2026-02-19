@@ -16,6 +16,7 @@ type FileEntry struct {
 
 type Sweatfile struct {
 	GitExcludes []string             `toml:"git_excludes"`
+	ClaudeAllow []string             `toml:"claude_allow"`
 	Env         map[string]string    `toml:"env"`
 	Files       map[string]FileEntry `toml:"files"`
 	Setup       []string             `toml:"setup"`
@@ -49,6 +50,13 @@ func Merge(base, repo Sweatfile) Sweatfile {
 			merged.GitExcludes = []string{}
 		} else {
 			merged.GitExcludes = append(base.GitExcludes, repo.GitExcludes...)
+		}
+	}
+	if repo.ClaudeAllow != nil {
+		if len(repo.ClaudeAllow) == 0 {
+			merged.ClaudeAllow = []string{}
+		} else {
+			merged.ClaudeAllow = append(base.ClaudeAllow, repo.ClaudeAllow...)
 		}
 	}
 	if repo.Setup != nil {
