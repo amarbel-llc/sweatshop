@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 
 	"github.com/amarbel-llc/sweatshop/internal/flake"
@@ -16,8 +13,6 @@ import (
 	"github.com/amarbel-llc/sweatshop/internal/tap"
 	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
-
-var styleCode = lipgloss.NewStyle().Foreground(lipgloss.Color("#E88388")).Background(lipgloss.Color("#1D1F21")).Padding(0, 1)
 
 func OpenRemote(host, path string) error {
 	log.Info("opening remote shop", "host", host, "path", path)
@@ -110,7 +105,7 @@ func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) e
 func CloseShop(sweatshopPath, format string) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
-		return nil // not a worktree path, nothing to do
+		return nil
 	}
 
 	home, err := os.UserHomeDir()
@@ -130,248 +125,37 @@ func CloseShop(sweatshopPath, format string) error {
 	commitsAhead := git.CommitsAhead(worktreePath, defaultBranch, comp.Worktree)
 	worktreeStatus := git.StatusPorcelain(worktreePath)
 
-	var tw *tap.Writer
+	desc := statusDescription(defaultBranch, commitsAhead, worktreeStatus)
+
 	if format == "tap" {
-		tw = tap.NewWriter(os.Stdout)
-	}
-
-	if commitsAhead == 0 && worktreeStatus == "" {
-		if tw != nil {
-			tw.PlanAhead(1)
-			tw.Skip("close-shop "+styleCode.Render(comp.Worktree), "no changes")
-		} else {
-			log.Info("no changes in worktree", "worktree", comp.Worktree)
-		}
-		return nil
-	}
-
-	hasUncommitted := worktreeStatus != ""
-	if hasUncommitted {
-		if tw == nil {
-			log.Warn("worktree has uncommitted changes", "worktree", comp.Worktree)
-			cmd := exec.Command("git", "-C", worktreePath, "status", "--short")
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-		}
-	}
-
-	action, err := chooseAction(comp.Worktree, hasUncommitted)
-	if err != nil || action == "" {
-		if tw != nil {
-			tw.PlanAhead(0)
-		}
-		return nil
-	}
-
-	if action == "Abort" {
-		return OpenExisting(sweatshopPath, format, false, nil)
-	}
-
-	if tw != nil {
-		tw.PlanAhead(estimateSteps(action))
-	}
-
-	return executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, comp.Worktree, format, tw)
-}
-
-func chooseAction(worktreeName string, hasUncommitted bool) (string, error) {
-	var options []huh.Option[string]
-	var header string
-
-	if hasUncommitted {
-		header = fmt.Sprintf("Close shop actions for %s (uncommitted changes, will not remove worktree):", worktreeName)
-		options = []huh.Option[string]{
-			huh.NewOption("Pull + Rebase + Merge + Push", "Pull + Rebase + Merge + Push"),
-			huh.NewOption("Rebase + Merge + Push", "Rebase + Merge + Push"),
-			huh.NewOption("Rebase + Merge", "Rebase + Merge"),
-			huh.NewOption("Rebase", "Rebase"),
-			huh.NewOption("Abort (reopen shop)", "Abort"),
-		}
+		tw := tap.NewWriter(os.Stdout)
+		tw.PlanAhead(1)
+		tw.Ok("close " + comp.Worktree + " # " + desc)
 	} else {
-		header = fmt.Sprintf("Close shop actions for %s:", worktreeName)
-		options = []huh.Option[string]{
-			huh.NewOption("Pull + Rebase + Merge + Remove worktree + Push", "Pull + Rebase + Merge + Remove worktree + Push"),
-			huh.NewOption("Rebase + Merge + Remove worktree + Push", "Rebase + Merge + Remove worktree + Push"),
-			huh.NewOption("Rebase + Merge + Remove worktree", "Rebase + Merge + Remove worktree"),
-			huh.NewOption("Rebase + Merge", "Rebase + Merge"),
-			huh.NewOption("Rebase", "Rebase"),
-			huh.NewOption("Abort (reopen shop)", "Abort"),
-		}
-	}
-
-	var action string
-	err := huh.NewSelect[string]().
-		Title(header).
-		Options(options...).
-		Value(&action).
-		Run()
-	if err != nil {
-		return "", nil
-	}
-
-	return action, nil
-}
-
-func runGit(tw *tap.Writer, repoPath string, args ...string) error {
-	if tw != nil {
-		_, err := git.Run(repoPath, args...)
-		return err
-	}
-	return git.RunPassthrough(repoPath, args...)
-}
-
-func tapStep(tw *tap.Writer, desc string, err error) error {
-	if tw == nil {
-		return err
-	}
-	if err != nil {
-		tw.NotOk(desc, map[string]string{"error": err.Error()})
-	} else {
-		tw.Ok(desc)
-	}
-	return err
-}
-
-func executeAction(action, repoPath, worktreePath, sweatshopPath, defaultBranch, worktreeName, format string, tw *tap.Writer) error {
-	home, _ := os.UserHomeDir()
-
-	// Pull
-	if len(action) >= 4 && action[:4] == "Pull" {
-		err := runGit(tw, repoPath, "pull")
-		if tapStep(tw, "pull "+styleCode.Render(defaultBranch), err) != nil {
-			if tw == nil {
-				log.Error("pull failed")
-				log.Info("to resolve, reopen the shop manually", "path", sweatshopPath)
-			}
-			return fmt.Errorf("pull failed: %w", err)
-		}
-		if tw == nil {
-			log.Info("pulled from origin", "branch", defaultBranch)
-		}
-	}
-
-	// Rebase
-	err := runGit(tw, worktreePath, "rebase", defaultBranch)
-	if tapStep(tw, "rebase "+styleCode.Render(worktreeName)+" onto "+styleCode.Render(defaultBranch), err) != nil {
-		if tw == nil {
-			log.Error("rebase failed")
-			log.Info("to resolve conflicts, reopen the shop manually", "path", sweatshopPath)
-		}
-		return fmt.Errorf("rebase failed: %w", err)
-	}
-	if tw == nil {
-		log.Info("rebased onto default branch", "worktree", worktreeName, "base", defaultBranch)
-	}
-
-	if action == "Rebase" {
-		return nil
-	}
-
-	// Stash repo changes before merge
-	repoStashed := false
-	if git.HasDirtyTracked(repoPath) {
-		if err := runGit(tw, repoPath, "stash", "push", "-m", "sweatshop: auto-stash before merge of "+worktreeName); err == nil {
-			repoStashed = true
-			if tw == nil {
-				log.Info("stashed changes", "path", repoPath)
-			}
-		}
-	}
-
-	// Merge
-	mergeErr := runGit(tw, repoPath, "merge", worktreeName, "--ff-only")
-	if tapStep(tw, "merge "+styleCode.Render(worktreeName)+" into "+styleCode.Render(defaultBranch), mergeErr) != nil {
-		if tw == nil {
-			log.Error("merge failed (not fast-forward)")
-			log.Info("to resolve, reopen the shop manually", "path", sweatshopPath)
-		}
-		if repoStashed {
-			runGit(tw, repoPath, "stash", "pop")
-			if tw == nil {
-				log.Info("restored stashed changes", "path", repoPath)
-			}
-		}
-		return fmt.Errorf("merge failed (not fast-forward): %w", mergeErr)
-	}
-	if tw == nil {
-		log.Info("merged into default branch", "worktree", worktreeName, "base", defaultBranch)
-	}
-
-	// Restore stash
-	if repoStashed {
-		runGit(tw, repoPath, "stash", "pop")
-		if tw == nil {
-			log.Info("restored stashed changes", "path", repoPath)
-		}
-	}
-
-	if action == "Rebase + Merge" {
-		return nil
-	}
-
-	// Remove worktree
-	if containsRemoveWorktree(action) {
-		fullPath := filepath.Join(home, sweatshopPath)
-		wtErr := runGit(tw, repoPath, "worktree", "remove", fullPath)
-		if tapStep(tw, "remove worktree "+styleCode.Render(worktreeName), wtErr) != nil {
-			if tw == nil {
-				log.Error("failed to remove worktree")
-			}
-			return wtErr
-		}
-		if tw == nil {
-			log.Info("removed worktree", "worktree", worktreeName)
-		}
-
-		brErr := runGit(tw, repoPath, "branch", "-D", worktreeName)
-		if tapStep(tw, "delete branch "+styleCode.Render(worktreeName), brErr) != nil {
-			if tw == nil {
-				log.Error("failed to delete branch", "branch", worktreeName)
-			}
-			return brErr
-		}
-		if tw == nil {
-			log.Info("deleted branch", "branch", worktreeName)
-		}
-	}
-
-	// Push
-	if len(action) >= 4 && action[len(action)-4:] == "Push" {
-		pushErr := runGit(tw, repoPath, "push", "origin", defaultBranch)
-		if tapStep(tw, "push "+styleCode.Render(defaultBranch), pushErr) != nil {
-			if tw == nil {
-				log.Error("push failed")
-			}
-			return pushErr
-		}
-		if tw == nil {
-			log.Info("pushed to origin", "branch", defaultBranch)
-		}
+		log.Info(desc, "worktree", sweatshopPath)
 	}
 
 	return nil
 }
 
-func containsRemoveWorktree(action string) bool {
-	return len(action) > 15 && (action == "Rebase + Merge + Remove worktree" ||
-		action == "Rebase + Merge + Remove worktree + Push" ||
-		action == "Pull + Rebase + Merge + Remove worktree + Push")
-}
+func statusDescription(defaultBranch string, commitsAhead int, porcelain string) string {
+	var parts []string
 
-func estimateSteps(action string) int {
-	n := 1 // rebase is always present
-	if strings.HasPrefix(action, "Pull") {
-		n++
+	if commitsAhead == 1 {
+		parts = append(parts, fmt.Sprintf("1 commit ahead of %s", defaultBranch))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d commits ahead of %s", commitsAhead, defaultBranch))
 	}
-	if action != "Rebase" {
-		n++ // merge
+
+	if porcelain == "" {
+		parts = append(parts, "clean")
+	} else {
+		parts = append(parts, "dirty")
 	}
-	if containsRemoveWorktree(action) {
-		n += 2 // remove worktree + delete branch
+
+	if commitsAhead == 0 && porcelain == "" {
+		parts = append(parts, "(merged)")
 	}
-	if strings.HasSuffix(action, "Push") {
-		n++
-	}
-	return n
+
+	return strings.Join(parts, ", ")
 }
