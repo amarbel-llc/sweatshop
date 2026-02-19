@@ -234,4 +234,3 @@ func RunReviewInteractive(sweatshopPath string) error {
 
 	return RouteDecisions(tiersDir, comp.Repo, settingsPath, decisions)
 }
-
