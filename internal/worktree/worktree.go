@@ -1,10 +1,7 @@
 package worktree
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,60 +71,7 @@ func Create(engArea, repoPath, worktreePath string) error {
 	if err != nil {
 		return fmt.Errorf("loading sweatfile: %w", err)
 	}
-	if err := sweatfile.Apply(worktreePath, sf); err != nil {
-		return err
-	}
-
-	return injectWorktreePerms(worktreePath)
-}
-
-func injectWorktreePerms(worktreePath string) error {
-	settingsPath := filepath.Join(worktreePath, ".claude", "settings.local.json")
-
-	// Load existing settings
-	var doc map[string]any
-	if data, err := os.ReadFile(settingsPath); err == nil {
-		json.Unmarshal(data, &doc)
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-	if doc == nil {
-		doc = make(map[string]any)
-	}
-
-	permsMap, _ := doc["permissions"].(map[string]any)
-	if permsMap == nil {
-		permsMap = make(map[string]any)
-	}
-
-	var existing []string
-	if allowRaw, ok := permsMap["allow"].([]any); ok {
-		for _, v := range allowRaw {
-			if s, ok := v.(string); ok {
-				existing = append(existing, s)
-			}
-		}
-	}
-
-	rules := appendUnique(existing,
-		"Read("+worktreePath+"/*)",
-		"Write("+worktreePath+"/*)",
-		"Edit("+worktreePath+"/*)",
-	)
-
-	permsMap["allow"] = rules
-	doc["permissions"] = permsMap
-
-	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(settingsPath, append(data, '\n'), 0o644)
+	return sweatfile.Apply(worktreePath, sf)
 }
 
 func IsWorktree(path string) bool {
@@ -136,18 +80,4 @@ func IsWorktree(path string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func appendUnique(existing []string, rules ...string) []string {
-	set := make(map[string]bool, len(existing))
-	for _, r := range existing {
-		set[r] = true
-	}
-	result := append([]string{}, existing...)
-	for _, r := range rules {
-		if !set[r] {
-			result = append(result, r)
-		}
-	}
-	return result
 }

@@ -42,6 +42,10 @@ func Apply(worktreePath string, sf Sweatfile) error {
 		return fmt.Errorf("running setup: %w", err)
 	}
 
+	if err := ApplyClaudeSettings(worktreePath, sf.ClaudeAllow); err != nil {
+		return fmt.Errorf("applying claude settings: %w", err)
+	}
+
 	return nil
 }
 
