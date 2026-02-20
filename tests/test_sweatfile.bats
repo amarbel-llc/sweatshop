@@ -72,6 +72,20 @@ MOCKEOF
   [[ -d "$HOME/eng/worktrees/testrepo/feature-create" ]]
   # Shell should NOT have been called
   [[ ! -f "$HOME/.shell-was-called" ]]
+
+  # Claude settings should be generated
+  local wt="$HOME/eng/worktrees/testrepo/feature-create"
+  local settings="$wt/.claude/settings.local.json"
+  [[ -f "$settings" ]]
+
+  # defaultMode should be acceptEdits
+  local mode
+  mode="$(jq -r '.permissions.defaultMode' "$settings")"
+  [[ "$mode" = "acceptEdits" ]]
+
+  # Scoped Edit and Write rules should be present
+  jq -e ".permissions.allow | map(select(startswith(\"Edit(\"))) | length > 0" "$settings" >/dev/null
+  jq -e ".permissions.allow | map(select(startswith(\"Write(\"))) | length > 0" "$settings" >/dev/null
 }
 
 function sweatfile_empty_sections_produce_clean_worktree { # @test

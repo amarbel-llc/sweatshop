@@ -75,6 +75,7 @@
 
         devShells.default = pkgs.mkShell {
           packages = [
+            pkgs.jq
             pkgs.just
             batman.packages.${system}.bats
             batman.packages.${system}.bats-libs
