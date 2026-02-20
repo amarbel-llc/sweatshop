@@ -24,11 +24,7 @@ func OpenRemote(host, path string) error {
 	return cmd.Run()
 }
 
-func OpenExisting(exec executor.Executor, sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
-	if noAttach {
-		return nil
-	}
-
+func Create(sweatshopPath string) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return err
@@ -41,19 +37,21 @@ func OpenExisting(exec executor.Executor, sweatshopPath, format string, noAttach
 
 	worktreePath := worktree.WorktreePath(home, sweatshopPath)
 
-	var command []string
-	if len(claudeArgs) > 0 {
-		command = append([]string{"claude"}, claudeArgs...)
+	if _, err := os.Stat(worktreePath); os.IsNotExist(err) {
+		repoPath := worktree.RepoPath(home, comp)
+		if err := worktree.Create(comp.EngArea, repoPath, worktreePath); err != nil {
+			return err
+		}
 	}
 
-	if err := exec.Attach(worktreePath, comp.ShopKey(), command); err != nil {
-		return fmt.Errorf("attach failed: %w", err)
-	}
-
-	return CloseShop(sweatshopPath, format)
+	return os.Chdir(worktreePath)
 }
 
-func OpenNew(exec executor.Executor, sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+func Attach(exec executor.Executor, sweatshopPath, format string, claudeArgs []string) error {
+	if err := Create(sweatshopPath); err != nil {
+		return err
+	}
+
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return err
@@ -64,20 +62,7 @@ func OpenNew(exec executor.Executor, sweatshopPath, format string, noAttach bool
 		return err
 	}
 
-	repoPath := worktree.RepoPath(home, comp)
 	worktreePath := worktree.WorktreePath(home, sweatshopPath)
-
-	if err := worktree.Create(comp.EngArea, repoPath, worktreePath); err != nil {
-		return err
-	}
-
-	if err := os.Chdir(worktreePath); err != nil {
-		return fmt.Errorf("changing to worktree: %w", err)
-	}
-
-	if noAttach {
-		return nil
-	}
 
 	var command []string
 	if len(claudeArgs) > 0 {

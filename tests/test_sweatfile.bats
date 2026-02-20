@@ -26,7 +26,7 @@ EOF
 }
 
 function sweatfile_applies_git_excludes { # @test
-  run sweatshop open "eng/worktrees/testrepo/feature-exc" --format tap
+  run sweatshop attach "eng/worktrees/testrepo/feature-exc" --format tap
   [[ "$status" -eq 0 ]]
   local wt="$HOME/eng/worktrees/testrepo/feature-exc"
   local exclude_path
@@ -43,7 +43,7 @@ function sweatfile_repo_sweatfile_merges_with_eng_area { # @test
 git_excludes = [".envrc"]
 EOF
 
-  run sweatshop open "eng/worktrees/testrepo/feature-merge" --format tap
+  run sweatshop attach "eng/worktrees/testrepo/feature-merge" --format tap
   [[ "$status" -eq 0 ]]
   local wt="$HOME/eng/worktrees/testrepo/feature-merge"
   local exclude_path
@@ -57,7 +57,7 @@ EOF
   grep -q ".envrc" "$exclude_path"
 }
 
-function no_attach_creates_worktree_without_running_shell { # @test
+function create_makes_worktree_without_running_shell { # @test
   # Make mock shell create a marker file so we can detect if it ran
   cat > "$MOCK_BIN/mock-shell" <<'MOCKEOF'
 #!/bin/bash
@@ -66,10 +66,10 @@ exit 0
 MOCKEOF
   chmod +x "$MOCK_BIN/mock-shell"
 
-  run sweatshop open "eng/worktrees/testrepo/feature-noattach" --no-attach --format tap
+  run sweatshop create "eng/worktrees/testrepo/feature-create"
   [[ "$status" -eq 0 ]]
   # Worktree should be created
-  [[ -d "$HOME/eng/worktrees/testrepo/feature-noattach" ]]
+  [[ -d "$HOME/eng/worktrees/testrepo/feature-create" ]]
   # Shell should NOT have been called
   [[ ! -f "$HOME/.shell-was-called" ]]
 }
@@ -80,7 +80,7 @@ function sweatfile_empty_sections_produce_clean_worktree { # @test
 git_excludes = [".claude/"]
 EOF
 
-  run sweatshop open "eng/worktrees/testrepo/feature-empty" --format tap
+  run sweatshop attach "eng/worktrees/testrepo/feature-empty" --format tap
   [[ "$status" -eq 0 ]]
   # Worktree should still be created
   [[ -d "$HOME/eng/worktrees/testrepo/feature-empty" ]]

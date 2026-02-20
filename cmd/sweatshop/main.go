@@ -27,11 +27,45 @@ var rootCmd = &cobra.Command{
 	Long:  `sweatshop manages git worktree lifecycles: opening shops (creating worktrees + sessions), and offering close shop workflows (rebase, merge, cleanup, push).`,
 }
 
-var openCmd = &cobra.Command{
-	Use:     "open [target] [claude args...]",
-	Aliases: []string{"attach"},
-	Short:   "Open a worktree shop",
-	Long:    `Open an existing or new worktree shop. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
+func resolveSweatshopPath(home string, args []string) (string, error) {
+	if len(args) == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		if len(cwd) <= len(home)+1 {
+			return "", fmt.Errorf("not in a subdirectory of home: %s", cwd)
+		}
+		return cwd[len(home)+1:], nil
+	}
+	return worktree.ParseTarget(args[0]).Path, nil
+}
+
+var createCmd = &cobra.Command{
+	Use:   "create [target]",
+	Short: "Create a worktree without attaching",
+	Long:  `Create a new worktree and apply sweatfile settings. Does not start a session. Target format: <eng_area>/worktrees/<repo>/<branch>.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+
+		sweatshopPath, err := resolveSweatshopPath(home, args)
+		if err != nil {
+			return err
+		}
+
+		return shop.Create(sweatshopPath)
+	},
+}
+
+var attachCmd = &cobra.Command{
+	Use:     "attach [target] [claude args...]",
+	Aliases: []string{"open"},
+	Short:   "Create (if needed) and attach to a worktree session",
+	Long:    `Create a worktree if it doesn't exist, then attach to a session. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
 	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
@@ -52,16 +86,11 @@ var openCmd = &cobra.Command{
 		}
 
 		if len(args) == 0 {
-			cwd, err := os.Getwd()
+			sweatshopPath, err := resolveSweatshopPath(home, nil)
 			if err != nil {
 				return err
 			}
-			sweatshopPath := cwd[len(home)+1:]
-
-			if info, err := os.Stat(cwd); err == nil && info.IsDir() {
-				return shop.OpenExisting(exec, sweatshopPath, format, openNoAttach, claudeArgs)
-			}
-			return shop.OpenNew(exec, sweatshopPath, format, openNoAttach, claudeArgs)
+			return shop.Attach(exec, sweatshopPath, format, claudeArgs)
 		}
 
 		target := worktree.ParseTarget(args[0])
@@ -70,12 +99,7 @@ var openCmd = &cobra.Command{
 			return shop.OpenRemote(target.Host, target.Path)
 		}
 
-		fullPath := home + "/" + target.Path
-		if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-			return shop.OpenExisting(exec, target.Path, format, openNoAttach, claudeArgs)
-		}
-
-		return shop.OpenNew(exec, target.Path, format, openNoAttach, claudeArgs)
+		return shop.Attach(exec, target.Path, format, claudeArgs)
 	},
 }
 
@@ -118,10 +142,7 @@ var mergeCmd = &cobra.Command{
 	},
 }
 
-var (
-	openNoAttach     bool
-	cleanInteractive bool
-)
+var cleanInteractive bool
 
 var pullDirty bool
 
@@ -176,9 +197,9 @@ var completionsCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "", "output format: tap or table")
-	openCmd.Flags().BoolVar(&openNoAttach, "no-attach", false, "create worktree and apply sweatfile without attaching to a session")
 	cleanCmd.Flags().BoolVarP(&cleanInteractive, "interactive", "i", false, "interactively discard changes in dirty merged worktrees")
-	rootCmd.AddCommand(openCmd)
+	rootCmd.AddCommand(createCmd)
+	rootCmd.AddCommand(attachCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(mergeCmd)
 	rootCmd.AddCommand(cleanCmd)
