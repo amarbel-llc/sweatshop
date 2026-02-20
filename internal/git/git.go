@@ -137,6 +137,22 @@ func NewestFileTime(path string) time.Time {
 	return newest
 }
 
+func CommonDir(worktreePath string) (string, error) {
+	out, err := Run(worktreePath, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return "", err
+	}
+	if !filepath.IsAbs(out) {
+		out = filepath.Join(worktreePath, out)
+	}
+	out = filepath.Clean(out)
+	// Strip trailing .git to get the repo root
+	if filepath.Base(out) == ".git" {
+		out = filepath.Dir(out)
+	}
+	return out, nil
+}
+
 func Pull(repoPath string) (string, error) {
 	return Run(repoPath, "pull")
 }

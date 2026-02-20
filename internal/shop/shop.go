@@ -24,99 +24,66 @@ func OpenRemote(host, path string) error {
 	return cmd.Run()
 }
 
-func Create(sweatshopPath, repoPath string) error {
-	comp, err := worktree.ParsePath(sweatshopPath)
-	if err != nil {
-		return err
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	worktreePath := worktree.WorktreePath(home, sweatshopPath)
-
-	if _, err := os.Stat(worktreePath); os.IsNotExist(err) {
-		if repoPath == "" {
-			repoPath = worktree.RepoPath(home, comp)
-		}
-		if err := worktree.Create(comp.EngArea, repoPath, worktreePath); err != nil {
+func Create(rp worktree.ResolvedPath) error {
+	if _, err := os.Stat(rp.AbsPath); os.IsNotExist(err) {
+		if err := worktree.Create(rp.EngAreaDir, rp.RepoPath, rp.AbsPath); err != nil {
 			return err
 		}
 	}
 
-	return os.Chdir(worktreePath)
+	return os.Chdir(rp.AbsPath)
 }
 
-func Attach(exec executor.Executor, sweatshopPath, format string, claudeArgs []string) error {
-	if err := Create(sweatshopPath, ""); err != nil {
+func Attach(exec executor.Executor, rp worktree.ResolvedPath, format string, claudeArgs []string) error {
+	if err := Create(rp); err != nil {
 		return err
 	}
-
-	comp, err := worktree.ParsePath(sweatshopPath)
-	if err != nil {
-		return err
-	}
-
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	worktreePath := worktree.WorktreePath(home, sweatshopPath)
 
 	var command []string
 	if len(claudeArgs) > 0 {
-		if flake.HasDevShell(worktreePath) {
+		if flake.HasDevShell(rp.AbsPath) {
 			log.Info("flake.nix detected, starting claude in nix develop")
 			command = append([]string{"nix", "develop", "--command", "claude"}, claudeArgs...)
 		} else {
 			command = append([]string{"claude"}, claudeArgs...)
 		}
-	} else if flake.HasDevShell(worktreePath) {
+	} else if flake.HasDevShell(rp.AbsPath) {
 		log.Info("flake.nix detected, starting session in nix develop")
 		command = []string{"nix", "develop", "--command", os.Getenv("SHELL")}
 	}
 
-	if err := exec.Attach(worktreePath, comp.ShopKey(), command); err != nil {
+	if err := exec.Attach(rp.AbsPath, rp.SessionKey, command); err != nil {
 		return fmt.Errorf("attach failed: %w", err)
 	}
 
-	return CloseShop(sweatshopPath, format)
+	return CloseShop(rp, format)
 }
 
-func CloseShop(sweatshopPath, format string) error {
-	comp, err := worktree.ParsePath(sweatshopPath)
-	if err != nil {
-		return nil
+func CloseShop(rp worktree.ResolvedPath, format string) error {
+	if rp.Branch == "" {
+		if err := rp.FillBranchFromGit(); err != nil {
+			log.Warn("could not determine current branch")
+			return nil
+		}
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-
-	repoPath := worktree.RepoPath(home, comp)
-	worktreePath := worktree.WorktreePath(home, sweatshopPath)
-
-	defaultBranch, err := git.BranchCurrent(repoPath)
+	defaultBranch, err := git.BranchCurrent(rp.RepoPath)
 	if err != nil || defaultBranch == "" {
 		log.Warn("could not determine default branch")
 		return nil
 	}
 
-	commitsAhead := git.CommitsAhead(worktreePath, defaultBranch, comp.Worktree)
-	worktreeStatus := git.StatusPorcelain(worktreePath)
+	commitsAhead := git.CommitsAhead(rp.AbsPath, defaultBranch, rp.Branch)
+	worktreeStatus := git.StatusPorcelain(rp.AbsPath)
 
 	desc := statusDescription(defaultBranch, commitsAhead, worktreeStatus)
 
 	if format == "tap" {
 		tw := tap.NewWriter(os.Stdout)
 		tw.PlanAhead(1)
-		tw.Ok("close " + comp.Worktree + " # " + desc)
+		tw.Ok("close " + rp.Branch + " # " + desc)
 	} else {
-		log.Info(desc, "worktree", sweatshopPath)
+		log.Info(desc, "worktree", rp.SessionKey)
 	}
 
 	return nil

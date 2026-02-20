@@ -28,46 +28,32 @@ var rootCmd = &cobra.Command{
 	Long:  `sweatshop manages git worktree lifecycles: opening shops (creating worktrees + sessions), and offering close shop workflows (rebase, merge, cleanup, push).`,
 }
 
-func resolveSweatshopPath(home string, args []string) (string, error) {
-	if len(args) == 0 {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		if len(cwd) <= len(home)+1 {
-			return "", fmt.Errorf("not in a subdirectory of home: %s", cwd)
-		}
-		return cwd[len(home)+1:], nil
-	}
-	return worktree.ParseTarget(args[0]).Path, nil
-}
-
 var createCmd = &cobra.Command{
-	Use:   "create [target]",
+	Use:   "create <target>",
 	Short: "Create a worktree without attaching",
-	Long:  `Create a new worktree and apply sweatfile settings. Does not start a session. Target format: <eng_area>/worktrees/<repo>/<branch>.`,
-	Args:  cobra.MaximumNArgs(1),
+	Long:  `Create a new worktree and apply sweatfile settings. Does not start a session. Target can be a convention path (<eng_area>/worktrees/<repo>/<branch>), an absolute path, or a relative path. Non-convention paths require --repo.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return err
 		}
 
-		sweatshopPath, err := resolveSweatshopPath(home, args)
+		rp, err := worktree.ResolvePath(home, args[0], createRepo)
 		if err != nil {
 			return err
 		}
 
-		return shop.Create(sweatshopPath, createRepo)
+		return shop.Create(rp)
 	},
 }
 
 var attachCmd = &cobra.Command{
-	Use:     "attach [target] [claude args...]",
+	Use:     "attach <target> [claude args...]",
 	Aliases: []string{"open"},
 	Short:   "Create (if needed) and attach to a worktree session",
-	Long:    `Create a worktree if it doesn't exist, then attach to a session. Target format: [host:]<eng_area>/worktrees/<repo>/<branch>. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
-	Args:    cobra.ArbitraryArgs,
+	Long:    `Create a worktree if it doesn't exist, then attach to a session. Target can be a convention path ([host:]<eng_area>/worktrees/<repo>/<branch>), an absolute path, or a relative path. Non-convention paths require --repo. If additional arguments are provided, claude is launched with those arguments instead of a shell.`,
+	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -86,21 +72,18 @@ var attachCmd = &cobra.Command{
 			claudeArgs = args[1:]
 		}
 
-		if len(args) == 0 {
-			sweatshopPath, err := resolveSweatshopPath(home, nil)
-			if err != nil {
-				return err
-			}
-			return shop.Attach(exec, sweatshopPath, format, claudeArgs)
-		}
-
 		target := worktree.ParseTarget(args[0])
 
 		if target.Host != "" {
 			return shop.OpenRemote(target.Host, target.Path)
 		}
 
-		return shop.Attach(exec, target.Path, format, claudeArgs)
+		rp, err := worktree.ResolvePath(home, target.Path, createRepo)
+		if err != nil {
+			return err
+		}
+
+		return shop.Attach(exec, rp, format, claudeArgs)
 	},
 }
 
@@ -199,6 +182,7 @@ var completionsCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVar(&outputFormat, "format", "", "output format: tap or table")
 	createCmd.Flags().StringVar(&createRepo, "repo", "", "absolute path to the base git repository")
+	attachCmd.Flags().StringVar(&createRepo, "repo", "", "absolute path to the base git repository")
 	cleanCmd.Flags().BoolVarP(&cleanInteractive, "interactive", "i", false, "interactively discard changes in dirty merged worktrees")
 	rootCmd.AddCommand(createCmd)
 	rootCmd.AddCommand(attachCmd)

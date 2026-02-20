@@ -116,3 +116,28 @@ EOF
   # Worktree should still be created
   [[ -d "$HOME/eng/worktrees/testrepo/feature-empty" ]]
 }
+
+function create_with_arbitrary_absolute_path { # @test
+  local wt="$BATS_TEST_TMPDIR/arbitrary-wt"
+  run sweatshop create --repo "$HOME/eng/repos/testrepo" "$wt"
+  [[ "$status" -eq 0 ]]
+  # Worktree should be created at the arbitrary path
+  [[ -d "$wt" ]]
+  # Verify it was created from the correct repo
+  git -C "$wt" log --oneline | grep -q "init"
+}
+
+function create_arbitrary_path_without_repo_fails { # @test
+  local wt="$BATS_TEST_TMPDIR/no-repo-wt"
+  run sweatshop create "$wt"
+  [[ "$status" -ne 0 ]]
+  [[ "$output" == *"--repo is required"* ]]
+}
+
+function attach_with_arbitrary_path { # @test
+  local wt="$BATS_TEST_TMPDIR/arbitrary-attach"
+  run sweatshop attach --repo "$HOME/eng/repos/testrepo" "$wt" --format tap
+  [[ "$status" -eq 0 ]]
+  # Worktree should be created
+  [[ -d "$wt" ]]
+}
