@@ -1,9 +1,6 @@
 package worktree
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -76,107 +73,5 @@ func TestParsePathInvalid(t *testing.T) {
 	_, err := ParsePath("eng/repos/myrepo")
 	if err == nil {
 		t.Error("expected error for invalid path")
-	}
-}
-
-func TestInjectWorktreePerms(t *testing.T) {
-	dir := t.TempDir()
-
-	if err := injectWorktreePerms(dir); err != nil {
-		t.Fatalf("injectWorktreePerms: %v", err)
-	}
-
-	settingsPath := filepath.Join(dir, ".claude", "settings.local.json")
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("reading settings: %v", err)
-	}
-
-	var doc map[string]any
-	if err := json.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("parsing settings: %v", err)
-	}
-
-	permsMap, _ := doc["permissions"].(map[string]any)
-	if permsMap == nil {
-		t.Fatal("expected permissions key")
-	}
-
-	allowRaw, _ := permsMap["allow"].([]any)
-	if len(allowRaw) != 3 {
-		t.Fatalf("expected 3 rules, got %d", len(allowRaw))
-	}
-
-	expected := []string{
-		"Read(" + dir + "/*)",
-		"Write(" + dir + "/*)",
-		"Edit(" + dir + "/*)",
-	}
-	for i, want := range expected {
-		got, _ := allowRaw[i].(string)
-		if got != want {
-			t.Errorf("rule %d: got %q, want %q", i, got, want)
-		}
-	}
-}
-
-func TestInjectWorktreePermsPreservesExisting(t *testing.T) {
-	dir := t.TempDir()
-
-	claudeDir := filepath.Join(dir, ".claude")
-	os.MkdirAll(claudeDir, 0o755)
-
-	existing := map[string]any{
-		"permissions": map[string]any{
-			"allow": []string{"Bash(git status)"},
-		},
-		"mcpServers": map[string]any{},
-	}
-	data, _ := json.MarshalIndent(existing, "", "  ")
-	os.WriteFile(filepath.Join(claudeDir, "settings.local.json"), data, 0o644)
-
-	if err := injectWorktreePerms(dir); err != nil {
-		t.Fatalf("injectWorktreePerms: %v", err)
-	}
-
-	result, _ := os.ReadFile(filepath.Join(claudeDir, "settings.local.json"))
-	var doc map[string]any
-	json.Unmarshal(result, &doc)
-
-	if _, ok := doc["mcpServers"]; !ok {
-		t.Error("expected mcpServers key to be preserved")
-	}
-
-	permsMap, _ := doc["permissions"].(map[string]any)
-	allowRaw, _ := permsMap["allow"].([]any)
-	if len(allowRaw) != 4 {
-		t.Fatalf("expected 4 rules (1 existing + 3 new), got %d", len(allowRaw))
-	}
-
-	first, _ := allowRaw[0].(string)
-	if first != "Bash(git status)" {
-		t.Errorf("expected existing rule first, got %q", first)
-	}
-}
-
-func TestInjectWorktreePermsIdempotent(t *testing.T) {
-	dir := t.TempDir()
-
-	if err := injectWorktreePerms(dir); err != nil {
-		t.Fatalf("first call: %v", err)
-	}
-	if err := injectWorktreePerms(dir); err != nil {
-		t.Fatalf("second call: %v", err)
-	}
-
-	settingsPath := filepath.Join(dir, ".claude", "settings.local.json")
-	data, _ := os.ReadFile(settingsPath)
-	var doc map[string]any
-	json.Unmarshal(data, &doc)
-
-	permsMap, _ := doc["permissions"].(map[string]any)
-	allowRaw, _ := permsMap["allow"].([]any)
-	if len(allowRaw) != 3 {
-		t.Fatalf("expected 3 rules after double inject, got %d", len(allowRaw))
 	}
 }

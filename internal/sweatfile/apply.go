@@ -1,6 +1,7 @@
 package sweatfile
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -39,6 +40,10 @@ func Apply(worktreePath string, sf Sweatfile) error {
 
 	if err := RunSetup(worktreePath, sf.Setup); err != nil {
 		return fmt.Errorf("running setup: %w", err)
+	}
+
+	if err := ApplyClaudeSettings(worktreePath, sf.ClaudeAllow); err != nil {
+		return fmt.Errorf("applying claude settings: %w", err)
 	}
 
 	return nil
@@ -137,6 +142,43 @@ func RunSetup(worktreePath string, commands []string) error {
 		}
 	}
 	return nil
+}
+
+func ApplyClaudeSettings(worktreePath string, rules []string) error {
+	settingsPath := filepath.Join(worktreePath, ".claude", "settings.local.json")
+
+	var doc map[string]any
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		json.Unmarshal(data, &doc)
+	}
+	if doc == nil {
+		doc = make(map[string]any)
+	}
+
+	permsMap, _ := doc["permissions"].(map[string]any)
+	if permsMap == nil {
+		permsMap = make(map[string]any)
+	}
+
+	allRules := append([]string{}, rules...)
+	allRules = append(allRules,
+		"Edit(//"+worktreePath+"/**)",
+		"Write(//"+worktreePath+"/**)",
+	)
+
+	permsMap["allow"] = allRules
+	doc["permissions"] = permsMap
+
+	if err := os.MkdirAll(filepath.Dir(settingsPath), 0o755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(settingsPath, append(data, '\n'), 0o644)
 }
 
 func expandHome(path string) string {
