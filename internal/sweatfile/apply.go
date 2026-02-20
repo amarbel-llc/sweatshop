@@ -83,6 +83,7 @@ func ApplyClaudeSettings(worktreePath string, rules []string) error {
 		"Write(//"+worktreePath+"/**)",
 	)
 
+	permsMap["defaultMode"] = "acceptEdits"
 	permsMap["allow"] = allRules
 	doc["permissions"] = permsMap
 

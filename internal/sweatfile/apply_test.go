@@ -47,6 +47,11 @@ func TestApplyClaudeSettings(t *testing.T) {
 		t.Fatal("expected permissions key")
 	}
 
+	defaultMode, _ := permsMap["defaultMode"].(string)
+	if defaultMode != "acceptEdits" {
+		t.Errorf("defaultMode: got %q, want %q", defaultMode, "acceptEdits")
+	}
+
 	allowRaw, _ := permsMap["allow"].([]any)
 	if len(allowRaw) != 5 {
 		t.Fatalf("expected 5 rules (3 sweatfile + 2 scoped), got %d: %v", len(allowRaw), allowRaw)
