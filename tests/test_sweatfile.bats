@@ -6,12 +6,13 @@ setup() {
   setup_test_home
   setup_mock_path
 
-  # Mock zmx to exit immediately
-  cat > "$MOCK_BIN/zmx" <<'MOCKEOF'
+  # Mock SHELL to exit immediately (ShellExecutor runs $SHELL when no command given)
+  cat > "$MOCK_BIN/mock-shell" <<'MOCKEOF'
 #!/bin/bash
 exit 0
 MOCKEOF
-  chmod +x "$MOCK_BIN/zmx"
+  chmod +x "$MOCK_BIN/mock-shell"
+  export SHELL="$MOCK_BIN/mock-shell"
 
   # Create a real git repo as the "main repo"
   mkdir -p "$HOME/eng/repos/testrepo"
@@ -56,21 +57,21 @@ EOF
   grep -q ".envrc" "$exclude_path"
 }
 
-function no_attach_creates_worktree_without_calling_zmx { # @test
-  # Make zmx create a marker file so we can detect if it ran
-  cat > "$MOCK_BIN/zmx" <<'MOCKEOF'
+function no_attach_creates_worktree_without_running_shell { # @test
+  # Make mock shell create a marker file so we can detect if it ran
+  cat > "$MOCK_BIN/mock-shell" <<'MOCKEOF'
 #!/bin/bash
-touch "$HOME/.zmx-was-called"
+touch "$HOME/.shell-was-called"
 exit 0
 MOCKEOF
-  chmod +x "$MOCK_BIN/zmx"
+  chmod +x "$MOCK_BIN/mock-shell"
 
   run sweatshop open "eng/worktrees/testrepo/feature-noattach" --no-attach --format tap
   [[ "$status" -eq 0 ]]
   # Worktree should be created
   [[ -d "$HOME/eng/worktrees/testrepo/feature-noattach" ]]
-  # zmx should NOT have been called
-  [[ ! -f "$HOME/.zmx-was-called" ]]
+  # Shell should NOT have been called
+  [[ ! -f "$HOME/.shell-was-called" ]]
 }
 
 function sweatfile_empty_sections_produce_clean_worktree { # @test

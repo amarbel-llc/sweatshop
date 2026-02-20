@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/log"
 
+	"github.com/amarbel-llc/sweatshop/internal/executor"
 	"github.com/amarbel-llc/sweatshop/internal/flake"
 	"github.com/amarbel-llc/sweatshop/internal/git"
 	"github.com/amarbel-llc/sweatshop/internal/tap"
@@ -23,7 +24,7 @@ func OpenRemote(host, path string) error {
 	return cmd.Run()
 }
 
-func OpenExisting(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+func OpenExisting(exec executor.Executor, sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
 	if noAttach {
 		return nil
 	}
@@ -33,24 +34,26 @@ func OpenExisting(sweatshopPath, format string, noAttach bool, claudeArgs []stri
 		return err
 	}
 
-	zmxArgs := []string{"attach", comp.ShopKey()}
-	if len(claudeArgs) > 0 {
-		zmxArgs = append(zmxArgs, "claude")
-		zmxArgs = append(zmxArgs, claudeArgs...)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
 	}
 
-	cmd := exec.Command("zmx", zmxArgs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("zmx attach failed: %w", err)
+	worktreePath := worktree.WorktreePath(home, sweatshopPath)
+
+	var command []string
+	if len(claudeArgs) > 0 {
+		command = append([]string{"claude"}, claudeArgs...)
+	}
+
+	if err := exec.Attach(worktreePath, comp.ShopKey(), command); err != nil {
+		return fmt.Errorf("attach failed: %w", err)
 	}
 
 	return CloseShop(sweatshopPath, format)
 }
 
-func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
+func OpenNew(exec executor.Executor, sweatshopPath, format string, noAttach bool, claudeArgs []string) error {
 	comp, err := worktree.ParsePath(sweatshopPath)
 	if err != nil {
 		return err
@@ -76,27 +79,21 @@ func OpenNew(sweatshopPath, format string, noAttach bool, claudeArgs []string) e
 		return nil
 	}
 
-	zmxArgs := []string{"attach", comp.ShopKey()}
+	var command []string
 	if len(claudeArgs) > 0 {
 		if flake.HasDevShell(worktreePath) {
 			log.Info("flake.nix detected, starting claude in nix develop")
-			zmxArgs = append(zmxArgs, "nix", "develop", "--command", "claude")
-			zmxArgs = append(zmxArgs, claudeArgs...)
+			command = append([]string{"nix", "develop", "--command", "claude"}, claudeArgs...)
 		} else {
-			zmxArgs = append(zmxArgs, "claude")
-			zmxArgs = append(zmxArgs, claudeArgs...)
+			command = append([]string{"claude"}, claudeArgs...)
 		}
 	} else if flake.HasDevShell(worktreePath) {
 		log.Info("flake.nix detected, starting session in nix develop")
-		zmxArgs = append(zmxArgs, "nix", "develop", "--command", os.Getenv("SHELL"))
+		command = []string{"nix", "develop", "--command", os.Getenv("SHELL")}
 	}
 
-	cmd := exec.Command("zmx", zmxArgs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("zmx attach failed: %w", err)
+	if err := exec.Attach(worktreePath, comp.ShopKey(), command); err != nil {
+		return fmt.Errorf("attach failed: %w", err)
 	}
 
 	return CloseShop(sweatshopPath, format)

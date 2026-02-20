@@ -10,6 +10,7 @@ import (
 
 	"github.com/amarbel-llc/sweatshop/internal/clean"
 	"github.com/amarbel-llc/sweatshop/internal/completions"
+	"github.com/amarbel-llc/sweatshop/internal/executor"
 	"github.com/amarbel-llc/sweatshop/internal/merge"
 	"github.com/amarbel-llc/sweatshop/internal/perms"
 	"github.com/amarbel-llc/sweatshop/internal/pull"
@@ -43,6 +44,8 @@ var openCmd = &cobra.Command{
 			format = "tap"
 		}
 
+		exec := executor.ShellExecutor{}
+
 		var claudeArgs []string
 		if len(args) >= 2 {
 			claudeArgs = args[1:]
@@ -56,9 +59,9 @@ var openCmd = &cobra.Command{
 			sweatshopPath := cwd[len(home)+1:]
 
 			if info, err := os.Stat(cwd); err == nil && info.IsDir() {
-				return shop.OpenExisting(sweatshopPath, format, openNoAttach, claudeArgs)
+				return shop.OpenExisting(exec, sweatshopPath, format, openNoAttach, claudeArgs)
 			}
-			return shop.OpenNew(sweatshopPath, format, openNoAttach, claudeArgs)
+			return shop.OpenNew(exec, sweatshopPath, format, openNoAttach, claudeArgs)
 		}
 
 		target := worktree.ParseTarget(args[0])
@@ -69,10 +72,10 @@ var openCmd = &cobra.Command{
 
 		fullPath := home + "/" + target.Path
 		if info, err := os.Stat(fullPath); err == nil && info.IsDir() {
-			return shop.OpenExisting(target.Path, format, openNoAttach, claudeArgs)
+			return shop.OpenExisting(exec, target.Path, format, openNoAttach, claudeArgs)
 		}
 
-		return shop.OpenNew(target.Path, format, openNoAttach, claudeArgs)
+		return shop.OpenNew(exec, target.Path, format, openNoAttach, claudeArgs)
 	},
 }
 
@@ -111,7 +114,7 @@ var mergeCmd = &cobra.Command{
 	Short: "Merge current worktree into main",
 	Long:  `Run from inside a worktree. Merges the worktree branch into the main repo with --ff-only and removes the worktree.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return merge.Run()
+		return merge.Run(executor.ShellExecutor{})
 	},
 }
 

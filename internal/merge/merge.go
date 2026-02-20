@@ -3,15 +3,15 @@ package merge
 import (
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/charmbracelet/log"
 
+	"github.com/amarbel-llc/sweatshop/internal/executor"
 	"github.com/amarbel-llc/sweatshop/internal/git"
 	"github.com/amarbel-llc/sweatshop/internal/worktree"
 )
 
-func Run() error {
+func Run(exec executor.Executor) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -52,10 +52,6 @@ func Run() error {
 		return err
 	}
 
-	log.Info("detaching from zmx session")
-	cmd := exec.Command("zmx", "detach")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-	return cmd.Run()
+	log.Info("detaching from session")
+	return exec.Detach()
 }
