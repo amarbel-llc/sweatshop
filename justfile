@@ -1,4 +1,4 @@
-# sweatshop - git worktree session manager
+set output-format := "tap"
 
 default: build test
 
