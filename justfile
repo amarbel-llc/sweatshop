@@ -13,7 +13,7 @@ build-gomod2nix:
     nix develop --command gomod2nix
 
 # Run the binary
-run *ARGS:
+run-nix *ARGS:
     nix run . -- {{ARGS}}
 
 test: test-go test-bats
@@ -24,13 +24,15 @@ test-go:
 test-bats:
     nix develop --command bats --tap tests/
 
-# Format Go code
-fmt-go:
+codemod-fmt: codemod-fmt-go
+
+codemod-fmt-go:
     nix develop --command gofumpt -w .
 
 update-go: && build-gomod2nix
     nix develop --command go mod tidy
 
-# Clean build artifacts
-clean:
+clean: clean-build
+
+clean-build:
     rm -rf result build/

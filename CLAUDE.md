@@ -11,14 +11,17 @@ Written in Go with cobra for CLI, lipgloss/table for styled output, huh for inte
 ## Commands
 
 ```sh
-just build         # nix build
-just build-go      # go build via nix develop
-just build-gomod2nix # regenerate gomod2nix.toml
-just test          # go unit tests via: nix develop --command go test ./...
-just test-bats     # bats integration tests via: nix develop --command bats tests/
-just fmt           # gofumpt -w .
-just deps          # go mod tidy + gomod2nix
-just run           # nix run . -- [args]
+just build            # build all (gomod2nix + go build)
+just build-go         # go build via nix develop
+just build-gomod2nix  # regenerate gomod2nix.toml
+just test             # run all tests (go + bats)
+just test-go          # go unit tests
+just test-bats        # bats integration tests
+just codemod-fmt      # format all code
+just codemod-fmt-go   # gofumpt -w .
+just update-go        # go mod tidy + gomod2nix
+just run-nix          # nix run . -- [args]
+just clean            # remove build artifacts
 ```
 
 Run a single test file: `nix develop --command bats tests/test_status.bats`
