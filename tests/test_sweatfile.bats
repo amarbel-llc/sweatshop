@@ -127,6 +127,55 @@ function create_with_arbitrary_absolute_path { # @test
   git -C "$wt" log --oneline | grep -q "init"
 }
 
+function create_trusts_worktree_in_claude_json { # @test
+  run sweatshop create "eng/worktrees/testrepo/feature-trust"
+  [[ "$status" -eq 0 ]]
+
+  local wt="$HOME/eng/worktrees/testrepo/feature-trust"
+  local claude_json="$HOME/.claude.json"
+  [[ -f "$claude_json" ]]
+
+  # The worktree path should be trusted
+  local accepted
+  accepted="$(jq -r --arg p "$wt" '.projects[$p].hasTrustDialogAccepted' "$claude_json")"
+  [[ "$accepted" = "true" ]]
+}
+
+function create_trust_preserves_existing_claude_json { # @test
+  # Pre-populate ~/.claude.json with existing data
+  cat > "$HOME/.claude.json" <<JSONEOF
+{
+  "numStartups": 42,
+  "projects": {
+    "/some/other/project": {
+      "hasTrustDialogAccepted": true
+    }
+  }
+}
+JSONEOF
+
+  run sweatshop create "eng/worktrees/testrepo/feature-trust-preserve"
+  [[ "$status" -eq 0 ]]
+
+  local wt="$HOME/eng/worktrees/testrepo/feature-trust-preserve"
+  local claude_json="$HOME/.claude.json"
+
+  # New worktree should be trusted
+  local accepted
+  accepted="$(jq -r --arg p "$wt" '.projects[$p].hasTrustDialogAccepted' "$claude_json")"
+  [[ "$accepted" = "true" ]]
+
+  # Existing project entry should be preserved
+  local other
+  other="$(jq -r '.projects["/some/other/project"].hasTrustDialogAccepted' "$claude_json")"
+  [[ "$other" = "true" ]]
+
+  # Top-level keys should be preserved
+  local startups
+  startups="$(jq -r '.numStartups' "$claude_json")"
+  [[ "$startups" = "42" ]]
+}
+
 function create_arbitrary_path_without_repo_fails { # @test
   local wt="$BATS_TEST_TMPDIR/no-repo-wt"
   run sweatshop create "$wt"
