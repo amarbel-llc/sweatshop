@@ -4,8 +4,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/6d41bc27aaf7b6a3ba6b169db3bd5d6159cfaa47";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
-    go.url = "github:amarbel-llc/eng?dir=devenvs/go";
-    shell.url = "github:amarbel-llc/eng?dir=devenvs/shell";
+    go.url = "github:amarbel-llc/purse-first?dir=devenvs/go";
+    shell.url = "github:amarbel-llc/purse-first?dir=devenvs/shell";
     batman.url = "github:amarbel-llc/batman";
   };
 
